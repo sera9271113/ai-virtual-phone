@@ -276,7 +276,7 @@
   padding-bottom: 0 !important;
   margin: 0 !important;
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   overflow-x: hidden;
   background: transparent;
 }
@@ -19970,4 +19970,348 @@
 .cp-xhs-video-comments-sheet .cp-xhs-comment-list > *,
 .cp-scroll-guard > * {
   flex-shrink: 0;
+}
+
+/* ----------------- Per-character wallpaper / icon customization ----------------- */
+
+/* Icon container: allow a full-bleed <img> to fill the squircle instead of the glyph */
+.cp-app-icon {
+  overflow: hidden;
+}
+
+.cp-app-icon--custom {
+  background: #e5e5e7;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.cp-app-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: inherit;
+  -webkit-user-drag: none;
+}
+
+.cp-modal-icon-container .cp-app-icon-img {
+  border-radius: 20px;
+}
+
+/* Keep back+translate+appearance grouped together on the left with the same
+   10px rhythm as .cp-floating-actions on the right, instead of letting
+   .cp-floating-controls' justify-content:space-between spread 3 items evenly
+   (which was centering the appearance button). */
+.cp-floating-left-cluster {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+/* Wallpaper layer: sits behind the desktop grid (z-index 10) and floating
+   controls (z-index 200), but above the plain #f3f5f8 fallback background. */
+.cp-wallpaper-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.cp-wallpaper-layer img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.cp-fullscreen-inner.has-custom-wallpaper {
+  background: #000;
+}
+
+/* Appearance ("自定义外观") button: same look/behavior as the other floating
+   pill buttons, just a different glyph. */
+.cp-float-appearance {
+  color: #202124;
+}
+
+.cp-float-appearance.is-active {
+  background: rgba(17, 17, 17, 0.84);
+  color: #fff;
+}
+
+/* Appearance modal: centered overlay filling most of the phone screen,
+   mirrors .cp-prompt-modal-overlay / .cp-prompt-modal. */
+.cp-appearance-modal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.cp-appearance-modal {
+  width: min(420px, 100%);
+  max-height: min(86vh, 780px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  border-radius: 22px;
+  background: rgba(248, 248, 250, 0.9);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.16);
+  color: #111;
+  overflow: hidden;
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+}
+
+.cp-appearance-modal-head {
+  flex: 0 0 auto;
+  padding: 16px 16px 12px;
+}
+
+.cp-appearance-modal-head span {
+  font-size: calc(15px*var(--app-text-scale,1));
+  font-weight: 780;
+}
+
+.cp-appearance-modal-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.06);
+  color: #111;
+  cursor: pointer;
+}
+
+.cp-appearance-modal-close:active {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.cp-appearance-modal-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.cp-appearance-wallpaper-sliders {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cp-appearance-slider-row {
+  display: grid;
+  grid-template-columns: 56px 1fr 40px;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-appearance-slider-row span {
+  color: rgba(17, 17, 17, 0.6);
+  font-size: calc(11px*var(--app-text-scale,1));
+  font-weight: 650;
+}
+
+.cp-appearance-slider-row input[type="range"] {
+  width: 100%;
+  accent-color: #111;
+}
+
+.cp-appearance-slider-row b {
+  text-align: right;
+  font-size: calc(11px*var(--app-text-scale,1));
+  color: #111;
+  font-weight: 700;
+}
+
+.cp-appearance-reset-transform-btn.ui-btn {
+  width: 100%;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: calc(12px*var(--app-text-scale,1));
+  margin-top: 2px;
+}
+
+.cp-appearance-section {
+  padding: 12px 14px 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.cp-appearance-section-title {
+  color: #111;
+  font-size: calc(12px*var(--app-text-scale,1));
+  font-weight: 760;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.cp-appearance-wallpaper-preview {
+  position: relative;
+  width: 100%;
+  height: 96px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: repeating-linear-gradient(45deg, #eceef1, #eceef1 8px, #e2e4e8 8px, #e2e4e8 16px);
+  display: grid;
+  place-items: center;
+  margin-bottom: 8px;
+}
+
+.cp-appearance-wallpaper-preview img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center center;
+}
+
+.cp-appearance-empty {
+  color: rgba(17, 17, 17, 0.4);
+  font-size: calc(11px*var(--app-text-scale,1));
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.cp-appearance-url-input {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.75);
+  color: #111;
+  font-size: calc(12.5px*var(--app-text-scale,1));
+  box-sizing: border-box;
+}
+
+.cp-appearance-url-input:focus {
+  outline: none;
+  border-color: rgba(17, 17, 17, 0.4);
+}
+
+.cp-appearance-row-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cp-appearance-row-actions .ui-btn {
+  flex: 1;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: calc(12px*var(--app-text-scale,1));
+}
+
+.cp-appearance-upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.cp-appearance-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.cp-appearance-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px 2px 2px;
+}
+
+.cp-appearance-icon-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.cp-appearance-icon-tile-frame {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+
+.cp-appearance-icon-tile-btn {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.cp-appearance-icon-tile-frame .cp-app-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 15px;
+}
+
+.cp-appearance-icon-tile-clear {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: 2px solid rgba(248, 248, 250, 0.95);
+  display: grid;
+  place-items: center;
+  background: rgba(17, 17, 17, 0.86);
+  color: #fff;
+  cursor: pointer;
+}
+
+.cp-appearance-icon-tile-name {
+  max-width: 68px;
+  color: rgba(17, 17, 17, 0.6);
+  font-size: calc(10.5px*var(--app-text-scale,1));
+  font-weight: 640;
+  text-align: center;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-appearance-reset-btn.ui-btn {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+  font-size: calc(12.5px*var(--app-text-scale,1));
+  font-weight: 700;
 }
