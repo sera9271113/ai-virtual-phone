@@ -36,7 +36,10 @@ import {
   Heart,
   ChevronRight,
   Languages,
-  History
+  History,
+  Palette,
+  Upload,
+  RotateCcw
 } from "lucide-react";
 import { PageShell } from "@/components/ui/page-shell";
 import { ConfirmDialog, Toggle } from "@/components/ui";
@@ -90,6 +93,13 @@ import {
   type CheckPhoneSettings,
 } from "@/lib/checkphone-settings";
 import { DEFAULT_CHECKPHONE_BILINGUAL_PROMPT } from "@/lib/bilingual-prompt-defaults";
+import {
+  loadCheckPhoneAppearance,
+  setCheckPhoneWallpaper,
+  setCheckPhoneIconOverride,
+  resetCheckPhoneAppearance,
+  type CheckPhoneAppearance,
+} from "@/lib/checkphone-appearance-storage";
 
 type CheckPhoneAppProps = {
   onClose: () => void;
@@ -282,6 +292,32 @@ function getAppIconClass(appId: CheckPhoneAppId, isDock = false) {
   return baseClass;
 }
 
+function renderAppIcon(
+  appId: CheckPhoneAppId,
+  overrideUrl: string | undefined,
+  opts?: { isDock?: boolean; size?: number | string; strokeWidth?: number },
+) {
+  const className = getAppIconClass(appId, !!opts?.isDock) + (overrideUrl ? " cp-app-icon--custom" : "");
+  return (
+    <div className={className}>
+      {overrideUrl ? (
+        <img src={overrideUrl} alt="" className="cp-app-icon-img" draggable={false} />
+      ) : (
+        <AppGlyph appId={appId} size={opts?.size} strokeWidth={opts?.strokeWidth} />
+      )}
+    </div>
+  );
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function CheckPhoneApp({ onClose }: CheckPhoneAppProps) {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [activeCharId, setActiveCharId] = useState<string | null>(null);
@@ -354,6 +390,12 @@ export function CheckPhoneApp({ onClose }: CheckPhoneAppProps) {
   });
   const settingsPanelRef = useRef<HTMLDivElement | null>(null);
 
+  // Per-character wallpaper / icon customization
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [appearanceMap, setAppearanceMap] = useState<Record<string, CheckPhoneAppearance>>({});
+  const [wallpaperUrlDraft, setWallpaperUrlDraft] = useState("");
+  const appearancePanelRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     const all = loadCharacters();
     setCharacters(all);
@@ -416,10 +458,84 @@ export function CheckPhoneApp({ onClose }: CheckPhoneAppProps) {
     return () => { cancelled = true; };
   }, [activeCharId, states]);
 
+  useEffect(() => {
+    if (!activeCharId) return;
+    if (appearanceMap[activeCharId]) return;
+    const loaded = loadCheckPhoneAppearance(activeCharId);
+    setAppearanceMap((prev) => ({ ...prev, [activeCharId]: loaded }));
+  }, [activeCharId, appearanceMap]);
+
+  useEffect(() => {
+    if (!appearanceOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (appearancePanelRef.current?.contains(target)) return;
+      setAppearanceOpen(false);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setAppearanceOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [appearanceOpen]);
+
   const activeCharacter = useMemo(
     () => characters.find((item) => item.id === activeCharId) ?? null,
     [characters, activeCharId],
   );
+  const activeAppearance = activeCharId ? appearanceMap[activeCharId] ?? null : null;
+
+  useEffect(() => {
+    setWallpaperUrlDraft(activeAppearance?.wallpaperUrl ?? "");
+  }, [activeAppearance?.wallpaperUrl, activeCharId]);
+
+  function applyWallpaperUrl(url: string) {
+    if (!activeCharId) return;
+    const next = setCheckPhoneWallpaper(activeCharId, url);
+    setAppearanceMap((prev) => ({ ...prev, [activeCharId]: next }));
+  }
+
+  async function handleWallpaperFile(file: File | undefined) {
+    if (!file || !activeCharId) return;
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setWallpaperUrlDraft(dataUrl);
+      applyWallpaperUrl(dataUrl);
+    } catch {
+      // ignore read failure; keep previous wallpaper
+    }
+  }
+
+  function applyIconOverrideUrl(appId: CheckPhoneAppId, url: string) {
+    if (!activeCharId) return;
+    const next = setCheckPhoneIconOverride(activeCharId, appId, url);
+    setAppearanceMap((prev) => ({ ...prev, [activeCharId]: next }));
+  }
+
+  async function handleIconFile(appId: CheckPhoneAppId, file: File | undefined) {
+    if (!file || !activeCharId) return;
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      applyIconOverrideUrl(appId, dataUrl);
+    } catch {
+      // ignore read failure
+    }
+  }
+
+  function handleResetAppearance() {
+    if (!activeCharId) return;
+    const next = resetCheckPhoneAppearance(activeCharId);
+    setAppearanceMap((prev) => ({ ...prev, [activeCharId]: next }));
+    setWallpaperUrlDraft("");
+  }
   const activeState = activeCharId ? states[activeCharId] : undefined;
   const manifest = activeState?.manifest ?? null;
   const isEmbeddedAppOpen =
@@ -574,7 +690,18 @@ export function CheckPhoneApp({ onClose }: CheckPhoneAppProps) {
   if (activeCharacter) {
     return (
       <div className="cp-fullscreen-simulator">
-        <div className={`cp-fullscreen-inner ${!manifest ? "is-empty" : ""}`}>
+        <div
+          className={`cp-fullscreen-inner ${!manifest ? "is-empty" : ""} ${activeAppearance?.wallpaperUrl ? "has-custom-wallpaper" : ""}`}
+          style={
+            activeAppearance?.wallpaperUrl
+              ? {
+                  backgroundImage: `url(${activeAppearance.wallpaperUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }
+              : undefined
+          }
+        >
           {/* Floating Controls overhauled for real status bar */}
           {!isEmbeddedAppOpen && (
             <div className="cp-floating-controls">
@@ -630,6 +757,118 @@ export function CheckPhoneApp({ onClose }: CheckPhoneAppProps) {
                         </button>
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+
+              <div className="cp-floating-settings" ref={appearancePanelRef}>
+                <button
+                  className={`cp-float-settings cp-float-appearance ${appearanceOpen ? "is-active" : ""}`}
+                  onClick={() => setAppearanceOpen((open) => !open)}
+                  aria-label="Customize wallpaper and icons"
+                  aria-expanded={appearanceOpen}
+                  disabled={!manifest}
+                >
+                  <Palette size={18} strokeWidth={2.25} />
+                </button>
+                {appearanceOpen && (
+                  <div className="cp-appearance-popover" role="dialog" aria-label="自定义壁纸和图标">
+                    <div className="cp-desktop-settings-head">
+                      <span>自定义外观</span>
+                      <b>CHECKPHONE</b>
+                    </div>
+
+                    <div className="cp-appearance-section">
+                      <div className="cp-appearance-section-title">壁纸</div>
+                      <div className="cp-appearance-wallpaper-preview">
+                        {wallpaperUrlDraft ? (
+                          <img src={wallpaperUrlDraft} alt="" />
+                        ) : (
+                          <span className="cp-appearance-empty">默认</span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        className="cp-appearance-url-input"
+                        placeholder="粘贴图片 URL"
+                        value={wallpaperUrlDraft}
+                        onChange={(e) => setWallpaperUrlDraft(e.target.value)}
+                        onBlur={(e) => applyWallpaperUrl(e.target.value)}
+                      />
+                      <div className="cp-appearance-row-actions">
+                        <label className="ui-btn cp-appearance-upload-btn">
+                          <Upload size={13} strokeWidth={2.25} />
+                          本地上传
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="cp-appearance-file-input"
+                            onChange={(e) => void handleWallpaperFile(e.target.files?.[0])}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="ui-btn"
+                          onClick={() => {
+                            setWallpaperUrlDraft("");
+                            applyWallpaperUrl("");
+                          }}
+                        >
+                          清除
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="cp-appearance-section">
+                      <div className="cp-appearance-section-title">图标</div>
+                      <div className="cp-appearance-icon-list">
+                        {manifest?.allAppIds.map((appId) => {
+                          const spec = CHECKPHONE_APP_SPECS[appId];
+                          const overrideUrl = activeAppearance?.iconOverrides?.[appId];
+                          return (
+                            <div key={appId} className="cp-appearance-icon-row">
+                              {renderAppIcon(appId, overrideUrl, { size: 20, strokeWidth: 1.6 })}
+                              <div className="cp-appearance-icon-row-main">
+                                <span className="cp-appearance-icon-name">{spec.shortLabel ?? spec.label}</span>
+                                <input
+                                  type="text"
+                                  className="cp-appearance-url-input cp-appearance-url-input--sm"
+                                  placeholder="图标 URL"
+                                  defaultValue={overrideUrl ?? ""}
+                                  onBlur={(e) => applyIconOverrideUrl(appId, e.target.value)}
+                                />
+                              </div>
+                              <label className="cp-appearance-icon-upload" aria-label="上传本地图标">
+                                <Upload size={13} strokeWidth={2.25} />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="cp-appearance-file-input"
+                                  onChange={(e) => void handleIconFile(appId, e.target.files?.[0])}
+                                />
+                              </label>
+                              {overrideUrl && (
+                                <button
+                                  type="button"
+                                  className="cp-appearance-icon-clear"
+                                  aria-label="恢复默认图标"
+                                  onClick={() => applyIconOverrideUrl(appId, "")}
+                                >
+                                  <X size={13} strokeWidth={2.5} />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="cp-desktop-settings-action">
+                      <button type="button" className="ui-btn cp-appearance-reset-btn" onClick={handleResetAppearance}>
+                        <RotateCcw size={13} strokeWidth={2.25} />
+                        恢复默认外观
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -771,7 +1010,7 @@ export function CheckPhoneApp({ onClose }: CheckPhoneAppProps) {
                               className="cp-app-btn"
                               onClick={() => setSelectedAppId(appId)}
                             >
-                              <div className={getAppIconClass(appId)}><AppGlyph appId={appId} size={32} strokeWidth={1.4} /></div>
+                              {renderAppIcon(appId, activeAppearance?.iconOverrides?.[appId], { size: 32, strokeWidth: 1.4 })}
                               <span className="cp-app-label">{spec.shortLabel ?? spec.label}</span>
                             </button>
                           );
@@ -821,7 +1060,7 @@ export function CheckPhoneApp({ onClose }: CheckPhoneAppProps) {
                               onClick={() => setSelectedAppId(appId)}
                               style={isBottomRow ? { transform: "translateY(-8px)" } : undefined}
                             >
-                              <div className={getAppIconClass(appId)}><AppGlyph appId={appId} size={32} strokeWidth={1.4} /></div>
+                              {renderAppIcon(appId, activeAppearance?.iconOverrides?.[appId], { size: 32, strokeWidth: 1.4 })}
                               <span className="cp-app-label">{spec.shortLabel ?? spec.label}</span>
                             </button>
                           );
@@ -857,7 +1096,7 @@ export function CheckPhoneApp({ onClose }: CheckPhoneAppProps) {
                           const spec = CHECKPHONE_APP_SPECS[appId];
                           return (
                             <button key={appId} type="button" className="cp-app-btn" onClick={() => setSelectedAppId(appId)}>
-                              <div className={getAppIconClass(appId)}><AppGlyph appId={appId} size={32} strokeWidth={1.4} /></div>
+                              {renderAppIcon(appId, activeAppearance?.iconOverrides?.[appId], { size: 32, strokeWidth: 1.4 })}
                               <span className="cp-app-label">{spec.shortLabel ?? spec.label}</span>
                             </button>
                           );
@@ -881,9 +1120,7 @@ export function CheckPhoneApp({ onClose }: CheckPhoneAppProps) {
                             className="cp-app-btn cp-app-btn--dock"
                             onClick={() => setSelectedAppId(appId)}
                           >
-                            <div className={getAppIconClass(appId, true)}>
-                              <AppGlyph appId={appId} />
-                            </div>
+                            {renderAppIcon(appId, activeAppearance?.iconOverrides?.[appId], { isDock: true })}
                           </button>
                         );
                       })}
@@ -899,7 +1136,16 @@ export function CheckPhoneApp({ onClose }: CheckPhoneAppProps) {
             <div className="cp-modal-backdrop" onClick={closeSelectedApp}>
               <div className="cp-modal-body" onClick={(e) => e.stopPropagation()}>
                  <div className="cp-modal-icon-container">
-                   <AppGlyph appId={selectedAppId} />
+                   {activeAppearance?.iconOverrides?.[selectedAppId] ? (
+                     <img
+                       src={activeAppearance.iconOverrides[selectedAppId]}
+                       alt=""
+                       className="cp-app-icon-img"
+                       draggable={false}
+                     />
+                   ) : (
+                     <AppGlyph appId={selectedAppId} />
+                   )}
                  </div>
                  <h3>{selectedAppSpec.label}</h3>
                  <p>Simulation module offline. UI renders will arrive in later phases.</p>
