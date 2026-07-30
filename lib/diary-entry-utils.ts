@@ -176,13 +176,15 @@ export function formatDiaryEntryContext(entries: Array<{
   tags?: string[];
   body: string;
   createdAt: string;
-}>): string {
+}>, todayUserMood = ""): string {
   const active = [...entries]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 12);
-  if (active.length === 0) return "暂无日记";
+  const moodLine = todayUserMood ? `【用户今日心情】${todayUserMood}\n\n` : "";
 
-  return active.map((entry, index) => [
+  if (active.length === 0) return `${moodLine}暂无日记`.trim();
+
+  return moodLine + active.map((entry, index) => [
     `#${index + 1}`,
     `author: ${entry.characterName}`,
     `date: ${entry.dateLabel || entry.createdAt}`,

@@ -11,12 +11,10 @@ import {
 
 const ENTRIES_KEY = "ai_phone_diary_entries_v1";
 const TIMER_KEY = "ai_phone_diary_entry_timer_settings_v1";
-export const DIARY_ENTRY_FONT_ASSET_KEY = "ai_phone_diary_entry_font_asset_v1";
 export const DIARY_ENTRY_FONT_SCALE_KEY = "ai_phone_diary_entry_font_scale_v1";
 
 registerKvMigration(ENTRIES_KEY);
 registerKvMigration(TIMER_KEY);
-registerKvMigration(DIARY_ENTRY_FONT_ASSET_KEY);
 registerKvMigration(DIARY_ENTRY_FONT_SCALE_KEY);
 
 function generateId(prefix: string): string {
@@ -134,19 +132,9 @@ function normalizeTrigger(value: unknown): DiaryEntryTrigger {
   return value === "timer" ? "timer" : "manual";
 }
 
-export function loadDiaryEntryFontAssetId(): string | null {
-  const raw = kvGet(DIARY_ENTRY_FONT_ASSET_KEY);
-  const id = typeof raw === "string" ? raw.trim() : "";
-  return id || null;
-}
-
-export function saveDiaryEntryFontAssetId(assetId: string | null): void {
-  const id = typeof assetId === "string" ? assetId.trim() : "";
-  if (id) {
-    kvSet(DIARY_ENTRY_FONT_ASSET_KEY, id);
-  } else {
-    kvRemove(DIARY_ENTRY_FONT_ASSET_KEY);
-  }
+function normalizeSharedCharacterIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(value.map(item => cleanText(item, 120)).filter(Boolean)));
 }
 
 export function loadDiaryEntryFontScale(): number {
@@ -192,6 +180,7 @@ export function normalizeDiaryEntry(raw: unknown): DiaryEntry | null {
     body: body || blocks.map(block => block.type === "paragraph" || block.type === "quote" ? block.text : "").filter(Boolean).join("\n\n"),
     blocks,
     trigger: normalizeTrigger(record.trigger),
+    sharedCharacterIds: normalizeSharedCharacterIds(record.sharedCharacterIds ?? record.shared_character_ids),
     createdAt,
     updatedAt: typeof record.updatedAt === "string"
       ? record.updatedAt
@@ -242,6 +231,7 @@ export function createDiaryEntry(input: DiaryEntryInput): DiaryEntry {
     body,
     blocks: normalizeBlocks(input.blocks, body),
     trigger: input.trigger ?? "manual",
+    sharedCharacterIds: [],
     createdAt: now,
     updatedAt: now,
   };
@@ -252,6 +242,52 @@ export function createDiaryEntry(input: DiaryEntryInput): DiaryEntry {
 export function deleteDiaryEntry(id: string): void {
   if (!id) return;
   saveDiaryEntries(loadDiaryEntries().filter(entry => entry.id !== id));
+}
+
+export function updateDiaryEntry(id: string, patch: Partial<DiaryEntryInput>): DiaryEntry | null {
+  const all = loadDiaryEntries();
+  const index = all.findIndex(entry => entry.id === id);
+  if (index === -1) return null;
+  const current = all[index];
+  const now = new Date().toISOString();
+  const body = patch.body !== undefined ? cleanMultilineText(patch.body, 6000) : current.body;
+  const updated: DiaryEntry = {
+    ...current,
+    characterId: patch.characterId !== undefined ? cleanText(patch.characterId, 120) : current.characterId,
+    characterName: patch.characterName !== undefined ? (cleanText(patch.characterName, 80) || current.characterName) : current.characterName,
+    title: patch.title !== undefined ? (cleanText(patch.title, 80) || body.slice(0, 20) || "未命名日记") : current.title,
+    mood: patch.mood !== undefined ? cleanText(patch.mood, 60) : current.mood,
+    weather: patch.weather !== undefined ? cleanText(patch.weather, 60) : current.weather,
+    tags: patch.tags !== undefined ? normalizeTags(patch.tags) : current.tags,
+    body,
+    blocks: patch.blocks !== undefined ? normalizeBlocks(patch.blocks, body) : current.blocks,
+    updatedAt: now,
+  };
+  all[index] = updated;
+  saveDiaryEntries(all);
+  return updated;
+}
+
+// Records that an entry's content has been shared into the given
+// characters' short-term memory (see short-term-assembler.ts's diary
+// timeline block, which checks this field for self-written entries), so the
+// UI can avoid re-sharing to the same character and can show who already has
+// it. This intentionally does NOT bump updatedAt — sharing isn't a content
+// edit.
+export function markDiaryEntrySharedWithCharacters(id: string, characterIds: string[]): DiaryEntry | null {
+  const targets = characterIds.filter(Boolean);
+  if (!id || targets.length === 0) return null;
+  const all = loadDiaryEntries();
+  const index = all.findIndex(entry => entry.id === id);
+  if (index === -1) return null;
+  const current = all[index];
+  const updated: DiaryEntry = {
+    ...current,
+    sharedCharacterIds: Array.from(new Set([...current.sharedCharacterIds, ...targets])),
+  };
+  all[index] = updated;
+  saveDiaryEntries(all);
+  return updated;
 }
 
 export function loadDiaryEntryTimerSettings(): DiaryEntryTimerSettings {

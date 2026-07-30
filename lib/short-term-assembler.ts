@@ -16,7 +16,7 @@ import { loadVnProjectionEntries } from "./vn-storage";
 import { loadMapProjectionEntries, loadMapSharedProjectionEntries } from "./map-storage";
 import { loadGameProjectionEntries } from "./game-storage";
 import { loadDiaryEntries } from "./diary-entry-storage";
-import type { DiaryEntry, DiaryEntryBlock } from "./diary-entry-types";
+import { SELF_ENTRY_CHARACTER_ID, type DiaryEntry, type DiaryEntryBlock } from "./diary-entry-types";
 import { loadNoteWallProjectionEntries } from "./notewall-memory";
 import { loadXiaohongshuProjectionEntries } from "./xiaohongshu-memory";
 import { formatXiaohongshuShareForPrompt } from "./chat-share";
@@ -644,8 +644,16 @@ export function loadNativeTimeline(
     }
 
     // ── Diary entries ──
+    // Includes entries this character wrote about itself, AND entries the
+    // user wrote about themselves (characterId === SELF_ENTRY_CHARACTER_ID)
+    // that have been explicitly shared with this character via
+    // markDiaryEntrySharedWithCharacters — that's the only place
+    // entry.sharedCharacterIds is ever consumed, so without this branch a
+    // "shared" diary entry would never actually reach any character's
+    // short-term context.
     const diaryEntries = loadDiaryEntries().filter(entry =>
-        entry.characterId === characterId
+        (entry.characterId === characterId
+            || (entry.characterId === SELF_ENTRY_CHARACTER_ID && entry.sharedCharacterIds.includes(characterId)))
         && (!options?.afterTimestamp || entry.createdAt > options.afterTimestamp)
     );
     for (const diaryEntry of diaryEntries) {

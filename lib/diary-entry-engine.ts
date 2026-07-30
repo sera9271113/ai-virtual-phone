@@ -11,6 +11,7 @@ import { prepareShortTermContext } from "./short-term-assembler";
 import { formatDiaryEntryContext, parseDiaryEntryContent, type ParsedDiaryEntry } from "./diary-entry-utils";
 import type { DiaryEntry, DiaryEntryTrigger } from "./diary-entry-types";
 import { beginDiaryGeneration, endDiaryGeneration } from "./diary-generating-tracker";
+import { getTodayMoodLabel } from "./diary-mood-storage";
 
 type ResolvedDiaryEntryGeneration = {
   character: Character;
@@ -75,7 +76,7 @@ async function resolveDiaryEntryGeneration(
     worldBookActivationContext: prepared.wbActivationContext,
     recentBlocks: prepared.recentBlocks,
     unifiedRecentItems: prepared.unifiedRecentItems,
-    diaryEntryContext: formatDiaryEntryContext(entries),
+    diaryEntryContext: formatDiaryEntryContext(entries, getTodayMoodLabel()),
   });
 
   return { character, apiConfig, preset, regexes, messages, userName };
