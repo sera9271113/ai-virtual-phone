@@ -1168,12 +1168,12 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
                 tri.style.top = "-6px";
                 tri.style.bottom = "auto";
                 tri.style.borderTop = "none";
-                tri.style.borderBottom = "6px solid var(--ctx-menu-bg, #2c2c2c)";
+                tri.style.borderBottom = "6px solid var(--ctx-menu-bg, #FFFFFF)";
             } else {
                 tri.style.top = "auto";
                 tri.style.bottom = "-6px";
                 tri.style.borderBottom = "none";
-                tri.style.borderTop = "6px solid var(--ctx-menu-bg, #2c2c2c)";
+                tri.style.borderTop = "6px solid var(--ctx-menu-bg, #FFFFFF)";
             }
         }
     };

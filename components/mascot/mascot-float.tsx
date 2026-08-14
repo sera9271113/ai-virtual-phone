@@ -1892,33 +1892,38 @@ export function MascotFloat() {
         .mascot-msg-context-menu {
           position: absolute;
           left: 50%;
-          top: -34px;
+          bottom: calc(100% + 6px);
           z-index: 12;
           display: flex;
-          align-items: center;
+          flex-direction: column;
+          align-items: stretch;
+          min-width: 104px;
           overflow: hidden;
           border-radius: 8px;
-          background: rgba(36, 36, 42, 0.96);
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+          background: #fff;
+          border: 1px solid var(--c-card-border, #e5e5e5);
+          box-shadow: none;
           transform: translateX(-50%);
           white-space: nowrap;
         }
         .mascot-msg-context-menu button {
-          height: 28px;
-          padding: 0 12px;
+          width: 100%;
+          min-height: 44px;
+          padding: 0 16px;
           border: 0;
-          border-right: 1px solid rgba(255,255,255,0.1);
+          border-bottom: 1px solid var(--c-card-border, #e5e5e5);
           background: transparent;
-          color: #fff;
-          font-size: calc(11.5px*var(--app-text-scale,1));
+          color: var(--c-text-title, #2c3440);
+          font-size: calc(12.6px*var(--app-text-scale,1));
           font-family: inherit;
+          text-align: left;
           cursor: pointer;
         }
         .mascot-msg-context-menu button:last-child {
-          border-right: 0;
+          border-bottom: 0;
         }
         .mascot-msg-context-menu button[data-danger="true"] {
-          color: #ff8b8b;
+          color: var(--c-danger, #ff3b30);
         }
         .mascot-msg[data-role="user"] .mascot-msg-context-menu {
           left: auto;

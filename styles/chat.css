@@ -7,7 +7,7 @@
   /* 聊天 App 内整体背景统一为纯白色（侧边导航栏 / 顶栏 / 内容区共用同一个 token，
      故这里覆盖后会一并生效，不影响 chat 之外的其它页面主题色） */
   --c-page-body-bg: #FFFFFF;
-  --ctx-menu-bg: #2c2c2c;
+  --ctx-menu-bg: #FFFFFF;
   --page-header-content-height: 54px;
   --chat-tabbar-content-height: 68px;
   --chat-tabbar-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -262,6 +262,9 @@
 .chat-header-plus-btn:active {
   transform: scale(0.88);
   background: color-mix(in srgb, var(--c-icon-active) 8%, var(--c-input));
+}
+.chat-header-plus-menu {
+  box-shadow: none !important;
 }
 
 /* All / Private / Groups：三个等长按钮占满整行，并下移到与侧边导航「消息」图标同一水平线
@@ -1154,11 +1157,22 @@
 
 /* ── Context menu ── */
 .ctx-menu {
-  background: var(--ctx-menu-bg, #2c2c2c);
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  min-width: 112px;
+  padding: 0 !important;
+  overflow: hidden;
+  background: var(--ctx-menu-bg, #FFFFFF);
+  border: 1px solid var(--c-card-border, #E5E5E5);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: none;
   z-index: 50;
   white-space: nowrap;
+}
+.ctx-menu > .flex {
+  display: contents;
 }
 .chat-floating-ctx-menu {
   position: fixed;
@@ -1185,21 +1199,28 @@
 .ctx-menu-btn {
   background: transparent;
   border: none;
-  color: #fff;
-  padding: 0 12px;
+  color: var(--c-text-title, #2C3440);
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
   font-size: calc(12.6px*var(--app-text-scale,1));
+  text-align: left;
   cursor: pointer;
 }
 .ctx-menu-btn-danger {
   color: var(--c-danger);
 }
 .ctx-menu-btn:not(:last-of-type) {
-  border-right: 1px solid rgba(255,255,255,0.1);
+  border-right: none;
+}
+.ctx-menu-btn + .ctx-menu-btn,
+.ctx-menu > .flex + .flex > .ctx-menu-btn:first-child {
+  border-top: 1px solid var(--c-card-border, #E5E5E5);
 }
 .ctx-menu-triangle {
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-bottom: 6px solid var(--ctx-menu-bg, #2c2c2c);
+  border-bottom: 6px solid var(--ctx-menu-bg, #FFFFFF);
 }
 
 /* ══════════════════════════════════════════
@@ -7780,7 +7801,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 38px;
+  width: 48px;
   z-index: 25;
   display: flex;
   flex-direction: column;
@@ -7824,8 +7845,8 @@
 
 /* 侧边导航本体：固定窄宽，纵向排列，独占最左侧 */
 .chat-side-nav {
-  flex: 0 0 38px;
-  width: 38px;
+  flex: 0 0 48px;
+  width: 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -7845,7 +7866,7 @@
 /* 顶部安全区与透明顶栏等高，避免导航内容被遮挡 */
 .chat-side-nav-safe-area {
   flex: 0 0 auto;
-  height: calc(var(--page-header-safe-top, 48px) + var(--page-header-content-height, 54px));
+  height: var(--page-header-safe-top, 48px);
 }
 
 /* 用户头像：与右侧搜索栏保持同一水平线 */
@@ -7853,12 +7874,12 @@
   flex: 0 0 auto;
   display: flex;
   justify-content: center;
-  padding: 4px 0 10px;
+  padding: 45px 0 10px;
 }
 .chat-side-nav-avatar {
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-full, 9999px);
+  border-radius: var(--radius-md, 8px);
   overflow: hidden;
   background: var(--c-card-border);
   display: flex;

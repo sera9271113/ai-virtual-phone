@@ -570,28 +570,35 @@
           position: fixed;
           z-index: 50;
           display: flex;
-          gap: 2px;
-          padding: 4px;
+          flex-direction: column;
+          min-width: 112px;
+          padding: 0;
+          overflow: hidden;
           border-radius: 8px;
-          background: var(--vn-ui-panel);
-          border: 1px solid var(--vn-ui-accent-bg);
-          box-shadow: 0 4px 16px var(--vn-ui-overlay);
+          background: #fff;
+          border: 1px solid #e5e5e5;
+          box-shadow: none;
         }
         .vn-ctx-btn {
-          padding: 6px 12px;
+          width: 100%;
+          min-height: 44px;
+          padding: 0 16px;
           border: none;
-          border-radius: 4px;
+          border-bottom: 1px solid #e5e5e5;
+          border-radius: 0;
           background: transparent;
-          color: var(--vn-ui-text);
-          font-size: calc(12px*var(--app-text-scale,1));
+          color: #2c3440;
+          font-size: calc(12.6px*var(--app-text-scale,1));
           font-family: inherit;
+          text-align: left;
           cursor: pointer;
           white-space: nowrap;
           transition: background 0.15s;
         }
-        .vn-ctx-btn:active { background: var(--vn-ui-accent-bg); }
-        .vn-ctx-btn-danger { color: var(--vn-ui-danger); }
-        .vn-ctx-btn-danger:active { background: var(--vn-ui-accent-bg); }
+        .vn-ctx-btn:last-child { border-bottom: 0; }
+        .vn-ctx-btn:active { background: #f5f5f5; }
+        .vn-ctx-btn-danger { color: #ff3b30; }
+        .vn-ctx-btn-danger:active { background: #f5f5f5; }
 
         /* ── Beats Panel ── */
         .vn-beats-panel {

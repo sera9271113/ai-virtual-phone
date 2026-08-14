@@ -246,7 +246,7 @@ export function MomentPostCard({ post, onUpdate, onRequestDelete, onOpenCommentC
     }, [onUpdate, photoPromptDraft, post]);
 
     return (
-        <div data-moment-post-id={post.id} className="feed-post relative border-b-[2.5px] border-[var(--c-card-border)] pb-5 mb-5 w-full bg-transparent px-4 pt-2">
+        <div data-moment-post-id={post.id} className="feed-post relative pb-5 mb-5 w-full bg-transparent px-4 pt-2">
             {/* Header row: avatar + name */}
             <div className="feed-post-header flex items-center gap-3 mb-3">
                 <div
