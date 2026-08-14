@@ -30,13 +30,7 @@ npm run dev
 
 浏览器打开 `http://localhost:3001`（默认端口 3001，可用 `PORT` 环境变量修改）。
 
-`.env.example` 已默认开启：
-
-```env
-NEXT_PUBLIC_SELF_HOSTED_MODE=true
-```
-
-这个模式跳过账号/激活码门禁，用本地单机账号直接进入，适合个人使用。其余环境变量全部可选，功能按需启用（见下表）。
+应用默认使用本地身份直接进入，不需要账号、密码或激活码。其余环境变量全部可选，功能按需启用（见下表）。
 
 ## 首次使用
 
@@ -52,25 +46,16 @@ NEXT_PUBLIC_SELF_HOSTED_MODE=true
 
 1. 新建站点 / 项目，关联你 fork 或 clone 的仓库，选择 `main` 或 `test` 分支；
 2. 构建设置保持默认即可（Netlify 会自动读取仓库里的 `netlify.toml`；Vercel 自动识别 Next.js）；
-3. **在平台后台添加环境变量**（平台不会读取仓库里的 `.env.example`）：
-
-   ```env
-   NEXT_PUBLIC_SELF_HOSTED_MODE=true
-   ```
-
-4. 部署完成后打开站点，按「首次使用」配置即可。
+3. 部署完成后打开站点，按「首次使用」配置即可；无需配置账号或激活码环境变量。
 
 ## 环境变量总表
 
-除 `NEXT_PUBLIC_SELF_HOSTED_MODE` 外全部可选，不填时对应功能自动隐藏或停用。
+以下变量全部可选，不填时对应功能自动隐藏或停用。
 
 | 变量 | 用途 |
 |---|---|
-| `NEXT_PUBLIC_SELF_HOSTED_MODE` | `true`=单机模式（推荐自部署开启）；`false`=启用账号/激活码门禁（需配 Supabase） |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | 你自己的 Supabase 项目，启用云端功能时必填（服务端专用，勿放进 NEXT_PUBLIC） |
-| `ACCOUNT_GATE_SECRET` | 账号门禁签名密钥，启用账号系统时设为随机长字符串 |
-| `VERIFY_ADMIN_KEY` | 成年审核/激活码管理后台密钥 |
-| `APP_MARKET_ADMIN_KEY` | 应用市场审核后台密钥（不填回退用 `VERIFY_ADMIN_KEY`） |
+| `APP_MARKET_ADMIN_KEY` | 应用市场审核后台密钥 |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 便签墙实时刷新用（anon key 本身可公开） |
 | `NEXT_PUBLIC_IMAGE_GEN_PROXY_URL` | 通用生图代理地址，需自己部署代理服务 |
 | `NEXT_PUBLIC_DEFAULT_NETEASE_API_BASE` | 网易云音乐 API 默认地址（NeteaseCloudMusicApi 兼容实例，请自行部署）。留空时在线音乐隐藏，用户也可在音乐 APP 设置里自填 |
@@ -81,10 +66,8 @@ NEXT_PUBLIC_SELF_HOSTED_MODE=true
 
 ## 启用自己的 Supabase（可选云端功能）
 
-账号、激活码、成年审核、便签墙、游戏大厅、应用市场、黑市等云端功能需要你自己的 Supabase 项目。推荐在 Supabase SQL Editor 直接执行 `docs/supabase-all-in-one.sql` 一键建齐全部云端功能（幂等脚本，重复执行不会破坏已有数据；粘贴后先确认最后一行是「全部结束」标记再 Run，防止复制被截断）。也可按需执行下列单个脚本：
+便签墙、游戏大厅、应用市场、黑市等云端功能需要你自己的 Supabase 项目。推荐在 Supabase SQL Editor 直接执行 `docs/supabase-all-in-one.sql` 一键建齐全部云端功能（幂等脚本，重复执行不会破坏已有数据；粘贴后先确认最后一行是「全部结束」标记再 Run，防止复制被截断）。也可按需执行下列单个脚本：
 
-- `docs/account-supabase.sql`：账号、会话、激活码
-- `docs/verify-supabase.sql`：成年审核与审核图片桶（部署说明见 `docs/verify-setup.md`）
 - `docs/notewall-supabase.sql`：便签墙
 - `docs/game-hall-supabase.sql`：游戏大厅
 - `docs/custom-app-market-supabase.sql`：应用市场
@@ -92,13 +75,11 @@ NEXT_PUBLIC_SELF_HOSTED_MODE=true
 - `docs/online-play-supabase.sql`：多人联机（自定义APP/游戏的实时房间与云端共享，可选；不在一体脚本内，需单独执行）
 - `docs/moderation-supabase.sql`：内容管理（举报/管理员/下架/封号，可选；执行后用 SQL 把自己的账号 role 设为 admin，即可在 设置 → 管理中心 处理举报）
 
-然后关闭单机模式并填入服务端密钥：
+需要云端功能时填入 Supabase 服务端密钥：
 
 ```env
-NEXT_PUBLIC_SELF_HOSTED_MODE=false
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-ACCOUNT_GATE_SECRET=your-random-long-secret
 # 可选：启用多人联机（Project Settings → API 的 anon public key）
 SUPABASE_ANON_KEY=your-anon-key
 ```

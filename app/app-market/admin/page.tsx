@@ -115,7 +115,7 @@ export default function AppMarketAdminPage() {
                 type="text"
                 value={key}
                 onChange={event => setKey(event.target.value)}
-                placeholder="APP_MARKET_ADMIN_KEY 或 VERIFY_ADMIN_KEY"
+                placeholder="APP_MARKET_ADMIN_KEY"
               />
             </label>
             {error ? <div className="ama-error">{error}</div> : null}

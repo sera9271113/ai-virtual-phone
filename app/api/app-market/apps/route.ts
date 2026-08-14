@@ -196,11 +196,10 @@ function mapSupabaseError(message: string): string {
 
 // 只收 header 不收查询参数(?key= 会原文进访问日志);sha256 后比较避免时序侧信道
 function requireAppMarketAdminKey(request: Request): boolean {
-  const expected = (process.env.APP_MARKET_ADMIN_KEY || process.env.VERIFY_ADMIN_KEY || "").trim();
+  const expected = (process.env.APP_MARKET_ADMIN_KEY || "").trim();
   if (!expected) return false;
   const provided = (
     request.headers.get("x-app-market-admin-key")
-    || request.headers.get("x-verify-admin-key")
     || ""
   ).trim();
   if (!provided) return false;
@@ -209,7 +208,7 @@ function requireAppMarketAdminKey(request: Request): boolean {
 }
 
 function unauthorizedAdmin() {
-  return NextResponse.json({ ok: false, error: "管理密钥不正确（需配置 APP_MARKET_ADMIN_KEY 或 VERIFY_ADMIN_KEY）。" }, { status: 401 });
+  return NextResponse.json({ ok: false, error: "管理密钥不正确（需配置 APP_MARKET_ADMIN_KEY）。" }, { status: 401 });
 }
 
 function isAppMarketReviewEnabled(): boolean {

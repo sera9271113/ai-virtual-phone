@@ -1,8 +1,4 @@
-// 管理员鉴权：双通道。
-// ① 账号通道：app_users.role = 'admin'（moderation-supabase.sql 加的列）——
-//    role 列单独查询、查询失败视为非管理员，保证未跑迁移的老库不受影响。
-// ② 站长密钥通道：x-app-market-admin-key / x-verify-admin-key 请求头，
-//    与应用市场审核接口共用同一对环境变量，作为没有账号体系时的兜底。
+// 管理员鉴权：本地账号通道或应用市场专用管理密钥。
 
 import nodeCrypto from "node:crypto";
 
@@ -17,11 +13,10 @@ export type ModeratorContext = {
 };
 
 export function hasAdminKey(request: Request): boolean {
-  const expected = (process.env.APP_MARKET_ADMIN_KEY || process.env.VERIFY_ADMIN_KEY || "").trim();
+  const expected = (process.env.APP_MARKET_ADMIN_KEY || "").trim();
   if (!expected) return false;
   const provided = (
     request.headers.get("x-app-market-admin-key")
-    || request.headers.get("x-verify-admin-key")
     || ""
   ).trim();
   if (!provided) return false;

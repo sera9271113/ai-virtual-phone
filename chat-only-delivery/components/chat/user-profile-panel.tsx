@@ -25,6 +25,7 @@ import { kvGet, kvSet, kvRemove } from "@/lib/kv-db";
 import { ChatFallbackAvatar } from "./chat-fallback-avatar";
 import {
     Bell,
+    ChevronRight,
     Clock,
     FileCode2,
     Heart,
