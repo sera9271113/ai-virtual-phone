@@ -53,10 +53,10 @@ function ColorField({ label, colorKey, draft, onChange }: { label: string, color
   const { hex, alpha } = parseColorAlpha(cssValue)
 
   return (
-    <div className="flex flex-col gap-1 w-full max-w-[140px]">
+    <div className="flex flex-col gap-0.5 w-full max-w-[140px]">
       <div className="text-[calc(10px*var(--app-text-scale,1))] text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis text-center">{label}</div>
       <div 
-        className="relative w-full h-8 rounded-full overflow-hidden border border-gray-200/50 shadow-sm shrink-0"
+        className="relative w-full h-7 rounded-full overflow-hidden border border-gray-200/50 shadow-sm shrink-0"
         style={{ backgroundColor: hex }}
       >
         <input 
@@ -69,7 +69,7 @@ function ColorField({ label, colorKey, draft, onChange }: { label: string, color
       <input 
         type="range" min="0" max="1" step="any" value={alpha}
         onChange={e => onChange(colorKey, buildColor(hex, Number(e.target.value)))}
-        className="w-full h-1.5 mt-2 customizer-slider bg-gray-200 rounded-full outline-none"
+        className="w-full h-1.5 mt-1 customizer-slider bg-gray-200 rounded-full outline-none"
         title="透明度"
       />
     </div>
@@ -78,12 +78,12 @@ function ColorField({ label, colorKey, draft, onChange }: { label: string, color
 
 function SegmentControl({ options, value, onChange }: { options: {label: string, value: string}[], value: string, onChange: (val: string) => void }) {
   return (
-    <div className="flex bg-black/5 p-1 rounded-xl w-full">
+    <div className="flex bg-black/5 p-0.5 rounded-lg w-full">
       {options.map(opt => (
         <button 
           key={opt.value}
           onClick={() => onChange(opt.value)}
-          className={`flex-1 text-xs py-1.5 rounded-lg transition-all ${value === opt.value ? 'bg-white shadow text-black font-medium' : 'text-gray-500 hover:bg-white/50'}`}
+          className={`flex-1 text-xs py-1 rounded-md transition-all ${value === opt.value ? 'bg-white shadow text-black font-medium' : 'text-gray-500 hover:bg-white/50'}`}
         >
           {opt.label}
         </button>
@@ -119,7 +119,7 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
   const shadowOpacity = draft.cssOverrides["--desktop-global-shadow"] ?? "0.5"
   return (
     <div 
-      className="absolute bottom-0 left-0 right-0 z-[9999] bg-white/90 backdrop-blur-2xl border-t border-gray-200/50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] rounded-t-[32px] pb-6 overflow-hidden text-black customizer-drawer"
+      className="absolute bottom-0 left-0 right-0 z-[9999] bg-white/90 backdrop-blur-2xl border-t border-gray-200/50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] rounded-t-2xl pb-3 overflow-hidden text-black customizer-drawer"
       onPointerDown={e => e.stopPropagation()} // Prevent closing edit mode
     >
       <style>{`
@@ -132,8 +132,8 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
           touch-action: none;
           -webkit-tap-highlight-color: transparent;
         }
-        .customizer-slider.mt-2 {
-          margin: -11px 0 -19px !important;
+        .customizer-slider.mt-1 {
+          margin: -12px 0 -20px !important;
         }
         .customizer-slider:not(.mt-2) {
           margin: -19px 0 !important;
@@ -173,16 +173,16 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
           background: #e5e7eb;
         }
       `}</style>
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
         <span className="ts-16 font-medium text-[var(--c-text-title)] flex items-center gap-2">
           <Palette size={18} /> 个性化装扮
         </span>
-        <button onClick={onClose} className="p-1.5 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 transition-colors">
+        <button onClick={onClose} className="p-1 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 transition-colors" aria-label="关闭">
           <X size={18} />
         </button>
       </div>
 
-      <div className="px-6 py-3 flex gap-2 w-full">
+      <div className="px-4 py-2 flex gap-2 w-full">
         {[
           { id: "icons", label: "图标设定" },
           { id: "widgets", label: "组件设定" },
@@ -191,16 +191,16 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
           <button 
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`flex-1 flex justify-center py-1.5 rounded-full text-[calc(13px*var(--app-text-scale,1))] font-medium transition-colors ${activeTab === tab.id ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'}`}
+            className={`flex-1 flex justify-center py-1 rounded-full text-[calc(13px*var(--app-text-scale,1))] font-medium transition-colors ${activeTab === tab.id ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'}`}
           >
             {tab.label}
           </button>
         ))}
       </div>
 
-      <div className="px-6 pt-2 h-[280px] overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+      <div className="px-4 pt-1 h-[220px] overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
         {activeTab === "icons" && (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <SegmentControl 
               options={[
                 { label: "扁平纯色", value: "flat" },
@@ -210,7 +210,7 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
               onChange={v => handleUpdate("--desktop-icon-effect", v)}
             />
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-6 justify-items-center bg-gray-50/50 p-5 rounded-2xl shadow-inner border border-gray-100/50">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-3 justify-items-center bg-gray-50/50 p-3 rounded-xl shadow-inner border border-gray-100/50">
               <ColorField label="图标底色" colorKey="--c-desktop-icon-box" draft={draft} onChange={handleUpdate} />
               <ColorField label="图标主色" colorKey="--c-desktop-icon" draft={draft} onChange={handleUpdate} />
               <ColorField label="标题字色" colorKey="--c-home-label" draft={draft} onChange={handleUpdate} />
@@ -219,7 +219,7 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
         )}
 
         {activeTab === "widgets" && (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <SegmentControl 
               options={[
                 { label: "扁平纯色", value: "flat" },
@@ -229,7 +229,7 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
               onChange={v => handleUpdate("--desktop-widget-effect", v)}
             />
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-6 justify-items-center bg-gray-50/50 p-5 rounded-2xl shadow-inner border border-gray-100/50">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-3 justify-items-center bg-gray-50/50 p-3 rounded-xl shadow-inner border border-gray-100/50">
               <ColorField label="面板底色" colorKey="--c-home-card" draft={draft} onChange={handleUpdate} />
               <ColorField label="面板辅助色" colorKey="--c-home-border" draft={draft} onChange={handleUpdate} />
               <ColorField label="文字主色" colorKey="--c-home-text" draft={draft} onChange={handleUpdate} />
@@ -240,12 +240,12 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
         )}
 
         {activeTab === "global" && (
-          <div className="space-y-6 pt-2">
+          <div className="space-y-3 pt-1">
             
-            <div className="space-y-5 bg-gray-50/50 p-5 rounded-2xl shadow-inner border border-gray-100/50 text-gray-800">
+            <div className="space-y-3 bg-gray-50/50 p-3 rounded-xl shadow-inner border border-gray-100/50 text-gray-800">
               
               {/* 描边与阴影在一排 */}
-              <div className="flex items-center gap-4 border-b border-gray-200/50 pb-4">
+              <div className="flex items-center gap-3 border-b border-gray-200/50 pb-2">
                 <div className="flex items-center justify-between flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-[calc(14px*var(--app-text-scale,1))] font-medium">描边</span>
@@ -273,8 +273,8 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
                 
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
+              <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex justify-between text-[calc(13px*var(--app-text-scale,1))] font-medium">
                     <span>阴影强度</span>
                     <span>{Math.round(Number(shadowOpacity) * 100)}%</span>
@@ -287,7 +287,7 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex justify-between text-[calc(13px*var(--app-text-scale,1))] font-medium">
                     <span>外轮廓宽度</span>
                     <span>{Number(outlineWidth).toFixed(2)}</span>
@@ -300,7 +300,7 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex justify-between text-[calc(13px*var(--app-text-scale,1))] font-medium">
                     <span>外轮廓透明度</span>
                     <span>{Math.round(Number(outlineOpacity) * 100)}%</span>

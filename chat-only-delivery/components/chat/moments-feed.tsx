@@ -487,14 +487,9 @@ export function MomentsFeed({ onCloseApp }: MomentsFeedProps = {}) {
                         {/* Name and Flex Data */}
                         <div className="feed-profile-info flex flex-col gap-1 mt-3 ml-[6px] pointer-events-auto">
                             <span className="feed-profile-name ts-20 font-bold text-[var(--c-text-title)]">{userIdentity?.name ?? "我"}</span>
-                            <div className="feed-profile-stats flex gap-4 ts-13 text-[var(--c-icon)] font-medium mt-[2px]">
-                                <span className="feed-profile-stat"><strong className="feed-profile-stat-value text-[var(--c-text-title)]">128</strong> 关注</span>
-                                <span className="feed-profile-stat"><strong className="feed-profile-stat-value text-[var(--c-text-title)]">12.4K</strong> 粉丝</span>
-                                <span className="feed-profile-stat"><strong className="feed-profile-stat-value text-[var(--c-text-title)]">8.2M</strong> 获赞与收藏</span>
-                            </div>
-                            
+
                             {/* Signature */}
-                            <div className="feed-profile-signature mt-[2px] text-left text-[var(--c-text)]">
+                            <div className="feed-profile-signature text-left text-[var(--c-text)]">
                                 {editingSignature ? (
                                     <input
                                         ref={sigInputRef}

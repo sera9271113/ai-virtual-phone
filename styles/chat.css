@@ -208,7 +208,7 @@
    ══════════════════════════════════════════
 
   对齐推导（都从动态状态栏安全区之后开始计算）：
-  左侧导航：透明顶栏内容行(54px) + avatar-row 上边距(4px) + 头像半高(16px) = 74px
+  左侧导航：avatar-row 上边距(58px) + 头像半高(16px) = 74px
   右侧搜索：top-spacer(57px) + search-row 半高(17px) = 74px
 */
 
@@ -7874,7 +7874,7 @@
   flex: 0 0 auto;
   display: flex;
   justify-content: center;
-  padding: 45px 0 10px;
+  padding: 58px 0 10px;
 }
 .chat-side-nav-avatar {
   width: 32px;
