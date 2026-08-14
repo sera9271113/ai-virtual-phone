@@ -1006,7 +1006,7 @@ export function ChatSettingsPanel({
     const visibleCategories = SETTINGS_CATEGORY_META.filter(c => !c.groupOnly || session.isGroup);
 
     return (
-        <PageShell title="聊天设置" onBack={onClose} className="absolute inset-0 z-[100]">
+        <PageShell title="聊天设置" onBack={onClose} className="chat-settings-page absolute inset-0 z-[100]">
             <div className="chat-hero-page">
                 {/* ── Hero 卡片（固定不动）── */}
                 <div className="chat-hero-card">

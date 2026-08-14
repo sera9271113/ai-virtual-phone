@@ -6878,7 +6878,7 @@
    浅灰页底、白色卡片、1px 细线框、淡外阴影、扁平化，图标统一灰阶
    ============================================================ */
 .chat-hero-page {
-  --hero-page-bg: #FAFAFA;
+  --hero-page-bg: #FFFFFF;
   --hero-card-bg: #FFFFFF;
   --hero-border: #ECECEC;
   --hero-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -6887,7 +6887,13 @@
   --hero-text-dim: #9A9A9A;
   display: flex;
   flex-direction: column;
-  background: var(--hero-page-bg);
+  background: #FFFFFF;
+}
+.chat-settings-page,
+.chat-settings-page .page-header,
+.chat-settings-page > .page-body {
+  background: #FFFFFF !important;
+  background-image: none !important;
 }
 
 /* 聊天设置内的开关：开启态用黑色而非绿色（作用域仅限本面板） */
@@ -6902,7 +6908,7 @@
   position: relative;
   flex: 0 0 auto;
   margin: 16px 12px 14px;
-  background: var(--hero-card-bg);
+  background: #FFFFFF;
   border: 1px solid var(--hero-border);
   border-radius: 14px;
   box-shadow: var(--hero-shadow);
@@ -7509,6 +7515,15 @@
   backdrop-filter: none !important;
   border-bottom-color: transparent !important;
 }
+.moments-feed-page:not(.is-scrolled) .feed-cover-shell {
+  min-height: calc(var(--page-header-safe-top, 48px) + var(--page-header-content-height, 54px) + 220px);
+}
+.moments-feed-page:not(.is-scrolled) .feed-cover-bg {
+  z-index: 0;
+}
+.moments-feed-page:not(.is-scrolled) .feed-profile {
+  z-index: 1;
+}
 .moments-feed-page:not(.is-scrolled) .page-title {
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -7884,7 +7899,9 @@
   width: 34px;
   height: 34px;
   border: none;
-  background: transparent;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
   color: var(--c-icon);
   cursor: pointer;
   border-radius: var(--radius-lg, 12px);
@@ -7895,7 +7912,9 @@
 }
 .chat-side-nav-icon-btn.active {
   color: var(--c-icon-active);
-  background: transparent;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
 }
 
 /* 右侧内容区：消息列表 / 联系人 / 动态 / 钱包 / 设置 渲染在这里 */
