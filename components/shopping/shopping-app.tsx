@@ -488,7 +488,7 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
     const syncWallet = () => {
       const next = loadWalletState();
       setWalletState(next);
-      setSelectedPaymentSourceId(current => current === WALLET_BALANCE_ACCOUNT_ID || next.cards.some(card => card.id === current)
+      setSelectedPaymentSourceId(current => current === WALLET_BALANCE_ACCOUNT_ID || next.cards.some(card => card.id === current) || next.familyCards.some(card => card.id === current && card.status === "active" && card.direction === "granted")
         ? current
         : WALLET_BALANCE_ACCOUNT_ID);
     };
@@ -529,15 +529,21 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
           description: "红包、转账也默认使用余额",
         }
       : (() => {
-          const card = walletState.cards.find(item => item.id === selectedPaymentSourceId) ?? walletState.cards[0];
-          return card
-            ? {
-                id: card.id,
-                title: card.title,
-                balance: card.balance,
-                description: `${getWalletCardDisplayNumber(card.maskedNumber)} · 银行卡`,
-              }
-            : null;
+          const card = walletState.cards.find(item => item.id === selectedPaymentSourceId);
+          if (card) return {
+            id: card.id,
+            title: card.title,
+            balance: card.balance,
+            description: `${getWalletCardDisplayNumber(card.maskedNumber)} · 银行卡`,
+          };
+          const familyCard = walletState.familyCards.find(item => item.id === selectedPaymentSourceId && item.status === "active" && item.direction === "granted");
+          return familyCard ? {
+            id: familyCard.id,
+            familyCardId: familyCard.id,
+            title: `${familyCard.characterName}的亲属卡`,
+            balance: Math.max(0, familyCard.monthlyLimit - familyCard.usedAmount),
+            description: `每月额度 · ${familyCard.characterName}赠送`,
+          } : null;
         })(),
     [selectedPaymentSourceId, walletState],
   );
@@ -930,7 +936,8 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
       return;
     }
     const paymentResult = payWithWalletAccount({
-      accountId: paymentSource.id,
+      accountId: paymentSource.familyCardId ? undefined : paymentSource.id,
+      familyCardId: paymentSource.familyCardId,
       amount: cartTotals.totalPayment,
       title: "购物付款",
       detail: `购物订单：${order.summary}`,
@@ -942,11 +949,23 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
       setPaymentError(paymentResult.error ?? "付款失败。");
       return;
     }
+    if (paymentSource.familyCardId) {
+      const familyCard = paymentResult.state.familyCards.find(card => card.id === paymentSource.familyCardId);
+      if (familyCard) {
+        const chatSession = createOrGetSession(familyCard.characterId);
+        pushChatMessage({
+          sessionId: chatSession.id,
+          role: "system",
+          content: `亲属卡消费通知：用户使用你赠送的亲属卡购买了「${order.summary}」，消费 ${formatShoppingAmount(cartTotals.totalPayment)}，本月已使用 ${formatShoppingAmount(familyCard.usedAmount)} / ${formatShoppingAmount(familyCard.monthlyLimit)}。你已知道这笔消费，可结合当前语境自然回应。`,
+          mediaType: "system_instruction",
+        });
+      }
+    }
     setWalletState(paymentResult.state);
     const paidOrder: ShoppingOrder = {
       ...order,
       paymentCardId: paymentSource.id,
-      paymentCardLabel: paymentSource.id === WALLET_BALANCE_ACCOUNT_ID ? "余额支付" : `${paymentSource.title}（${paymentSource.description.replace(" · 银行卡", "")}）`,
+      paymentCardLabel: paymentSource.familyCardId ? `${paymentSource.title}（${paymentSource.description}）` : paymentSource.id === WALLET_BALANCE_ACCOUNT_ID ? "余额支付" : `${paymentSource.title}（${paymentSource.description.replace(" · 银行卡", "")}）`,
       paymentTransactionId: paymentResult.transaction.id,
       paidAt: paymentResult.transaction.createdAt,
     };
@@ -1898,6 +1917,13 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
                   description: `${getWalletCardDisplayNumber(card.maskedNumber)} · 银行卡`,
                   balance: card.balance,
                   icon: <WalletCards size={20} />,
+                })),
+                ...walletState.familyCards.filter(card => card.status === "active" && card.direction === "granted").map(card => ({
+                  id: card.id,
+                  title: `${card.characterName}的亲属卡`,
+                  description: `每月额度 · ${card.characterName}赠送`,
+                  balance: Math.max(0, card.monthlyLimit - card.usedAmount),
+                  icon: <HeartHandshake size={20} />,
                 })),
               ].map(source => {
                 const active = selectedPaymentSource?.id === source.id;

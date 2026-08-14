@@ -116,14 +116,13 @@ export function ChatMessageList({ activeSession, onSelectSession, onSelectMascot
             <div className="page-shell chat-list-page-shell">
                 <header className="page-header" data-ui="header">
                     <div className="page-header-safe-area" />
-                    {/* 空白行：高度与左侧导航「返回按钮」那一行对齐，本身不放内容 */}
                     <div className="chat-list-header-top-spacer" />
                     <div className="chat-list-search-row">
                         <div className="chat-search-bar chat-search-bar--compact">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-icon)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                             <input
                                 className="chat-search-input ts-15 w-full bg-transparent outline-none text-[var(--c-text-title)] placeholder:text-[var(--c-icon)]"
-                                placeholder="Search chats..."
+                                placeholder=""
                                 value={listFilter}
                                 onChange={(e) => setListFilter(e.target.value)}
                             />

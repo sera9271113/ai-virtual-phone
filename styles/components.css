@@ -1770,11 +1770,10 @@
   border: none;
   border-radius: 999px;
   color: #fff;
-  background:
-    radial-gradient(circle at 45% 40%, rgba(100,170,255,0.7) 0%, rgba(130,190,255,0.5) 30%, rgba(180,215,255,0.2) 55%, transparent 72%);
+  background: #555;
   box-shadow:
-    0 0 20px 4px rgba(120,175,255,0.15),
-    0 4px 12px rgba(100,160,255,0.1);
+    0 0 20px 4px rgba(0,0,0,0.08),
+    0 4px 12px rgba(0,0,0,0.14);
   cursor: grab;
   pointer-events: auto;
   touch-action: none;
@@ -1798,7 +1797,7 @@
   position: absolute;
   inset: -6px;
   border-radius: inherit;
-  background: radial-gradient(circle at 45% 40%, rgba(140,195,255,0.12) 0%, transparent 65%);
+  background: rgba(255,255,255,0.08);
   pointer-events: none;
 }
 
@@ -1811,8 +1810,8 @@
   transform: scale(1);
   animation: none;
   box-shadow:
-    0 0 28px 6px rgba(120,175,255,0.2),
-    0 4px 14px rgba(100,160,255,0.15);
+    0 0 28px 6px rgba(0,0,0,0.1),
+    0 4px 14px rgba(0,0,0,0.18);
 }
 
 .prompt-viewer-float-button:active {
@@ -1826,8 +1825,8 @@
   transform: scale(1.05);
   animation: none;
   box-shadow:
-    0 0 32px 8px rgba(120,175,255,0.25),
-    0 6px 16px rgba(100,160,255,0.18);
+    0 0 32px 8px rgba(0,0,0,0.12),
+    0 6px 16px rgba(0,0,0,0.2);
 }
 
 .quick-action-layer {
@@ -2178,10 +2177,8 @@
   flex-direction: column;
   overflow: hidden;
   border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.2);
-  background: color-mix(in srgb, var(--c-card, var(--c-input)) 78%, transparent);
-  backdrop-filter: blur(28px) saturate(170%);
-  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  border: 1px solid #d8d8d8;
+  background: #fff;
   box-shadow:
     0 12px 40px rgba(0,0,0,0.12),
     0 2px 8px rgba(0,0,0,0.06);
@@ -2201,12 +2198,12 @@
 .pv-header-title {
   font-weight: 600;
   font-size: calc(15px * var(--app-text-scale, 1));
-  color: var(--c-text-title);
+  color: #111;
   letter-spacing: 0.2px;
 }
 
 .pv-header-meta {
-  color: var(--c-icon);
+  color: #777;
   font-size: calc(11px * var(--app-text-scale, 1));
 }
 
@@ -2215,8 +2212,8 @@
   height: 32px;
   border: none;
   border-radius: 999px;
-  background: rgba(128,128,128,0.1);
-  color: var(--c-icon);
+  background: #f0f0f0;
+  color: #555;
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -2224,7 +2221,7 @@
 }
 
 .pv-close-btn:active {
-  background: rgba(128,128,128,0.2);
+  background: #dedede;
 }
 
 /* Tabs */
@@ -2249,7 +2246,7 @@
   background: none;
   cursor: pointer;
   font-size: calc(12.5px * var(--app-text-scale, 1));
-  color: var(--c-icon);
+  color: #777;
   font-weight: 400;
   position: relative;
   transition: color 150ms ease;
@@ -2268,17 +2265,17 @@
 }
 
 .pv-tab[data-active] {
-  color: var(--c-text-title);
+  color: #111;
   font-weight: 600;
 }
 
 .pv-tab[data-active]::after {
-  background: linear-gradient(90deg, rgba(100,170,255,0.6), rgba(130,160,255,0.8));
+  background: #111;
 }
 
 .pv-divider {
   height: 1px;
-  background: color-mix(in srgb, var(--c-panel-border, var(--c-border)) 50%, transparent);
+  background: #e5e5e5;
   flex-shrink: 0;
 }
 
@@ -2303,7 +2300,7 @@
 }
 
 .pv-btn-primary {
-  background: linear-gradient(135deg, rgba(100,170,255,0.75), rgba(110,140,255,0.8));
+  background: #333;
   color: #fff;
 }
 
@@ -2312,12 +2309,12 @@
 }
 
 .pv-btn-ghost {
-  background: rgba(128,128,128,0.08);
-  color: var(--c-text);
+  background: #f0f0f0;
+  color: #222;
 }
 
 .pv-btn-ghost:active {
-  background: rgba(128,128,128,0.15);
+  background: #dedede;
 }
 
 .pv-btn-warn {
@@ -2334,10 +2331,10 @@
 .pv-select {
   padding: 4px 8px;
   border-radius: 8px;
-  border: 1px solid rgba(128,128,128,0.12);
-  background: rgba(128,128,128,0.06);
+  border: 1px solid #d2d2d2;
+  background: #f5f5f5;
   font-size: calc(12px * var(--app-text-scale, 1));
-  color: var(--c-text);
+  color: #222;
   outline: none;
   max-width: 180px;
 }
@@ -2345,17 +2342,17 @@
 .pv-toggle {
   padding: 4px 10px;
   border-radius: 8px;
-  border: 1px solid rgba(128,128,128,0.12);
-  background: rgba(128,128,128,0.06);
+  border: 1px solid #d2d2d2;
+  background: #f5f5f5;
   font-size: calc(12px * var(--app-text-scale, 1));
   cursor: pointer;
-  color: var(--c-icon);
+  color: #555;
 }
 
 .pv-toggle[data-active] {
-  background: color-mix(in srgb, var(--c-warning) 12%, transparent);
-  border-color: color-mix(in srgb, var(--c-warning) 30%, transparent);
-  color: var(--c-warning);
+  background: #333;
+  border-color: #333;
+  color: #fff;
   font-weight: 600;
 }
 
@@ -2398,8 +2395,8 @@
   margin-bottom: 8px;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(128,128,128,0.1);
-  background: rgba(128,128,128,0.04);
+  border: 1px solid #e0e0e0;
+  background: #fafafa;
   transition: background 150ms ease;
 }
 
@@ -2420,29 +2417,54 @@
   letter-spacing: 0.5px;
   padding: 1px 6px;
   border-radius: 4px;
+  border: 1px solid transparent;
 }
 
 .pv-msg-role[data-role="system"] {
-  background: rgba(100,170,255,0.12);
-  color: rgba(100,170,255,0.9);
+  background: transparent;
+  border-color: #777;
+  color: #444;
 }
 
 .pv-msg-role[data-role="user"] {
-  background: color-mix(in srgb, var(--c-success) 12%, transparent);
-  color: var(--c-success);
+  background: #444;
+  border-color: #444;
+  color: #fff;
 }
 
 .pv-msg-role[data-role="assistant"] {
-  background: color-mix(in srgb, var(--c-warning) 12%, transparent);
-  color: var(--c-warning);
+  background: #dedede;
+  border-color: #dedede;
+  color: #111;
 }
 
 .pv-msg-badge {
   font-size: calc(10.5px * var(--app-text-scale, 1));
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(128,128,128,0.08);
-  color: var(--c-text);
+  border: 1px solid transparent;
+  background: #ededed;
+  color: #333;
+}
+
+.pv-msg-badge[data-kind="history"] {
+  background: transparent;
+  border-color: #777;
+  border-style: dashed;
+  color: #444;
+}
+
+.pv-msg-badge[data-kind="preset"] {
+  background: #222;
+  border-color: #222;
+  color: #fff;
+}
+
+.pv-msg-badge[data-kind="memory"] {
+  background: transparent;
+  border-color: #999;
+  border-style: dotted;
+  color: #555;
 }
 
 .pv-msg-depth {
@@ -2461,7 +2483,7 @@
   word-break: break-word;
   font-size: calc(12px * var(--app-text-scale, 1));
   line-height: 1.5;
-  color: var(--c-text);
+  color: #222;
 }
 
 /* Footer */

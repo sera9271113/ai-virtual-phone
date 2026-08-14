@@ -8,8 +8,9 @@ import { ChatRoom } from "./chat-room";
 import { MascotChatRoom } from "./mascot-chat-room";
 import { UserProfilePanel } from "./user-profile-panel";
 import { WalletPanel } from "./wallet-panel";
+import { MessagePanel } from "./message-panel";
 import { ChatFallbackAvatar } from "./chat-fallback-avatar";
-import { ChevronLeft, MessageCircle, Users, Aperture, Menu } from "lucide-react";
+import { ChevronLeft, Users, Aperture, Menu, Mail } from "lucide-react";
 import { ChatSession, loadChatSessions, pushChatMessage, hydrateChatStorage } from "@/lib/chat-storage";
 import { notifyMascotPageContext } from "@/lib/mascot-events";
 import { loadCharacters } from "@/lib/character-storage";
@@ -21,7 +22,21 @@ import { formatXiaohongshuShareForPrompt, type ChatSharePayload } from "@/lib/ch
 import { CHAT_OPEN_SESSION_EVENT, CHAT_OPEN_ADD_CONTACT_EVENT } from "@/lib/chat-notification-events";
 import { getMascotSettingsSnapshot } from "@/lib/mascot-settings";
 
-type TabKey = "messages" | "contacts" | "feeds" | "wallet" | "settings";
+type TabKey = "messages" | "contacts" | "message" | "feeds" | "wallet" | "settings";
+
+function WeChatIcon() {
+    return (
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M16.5 10c3.038 0 5.5 2.015 5.5 4.5c0 1.397 -.778 2.645 -2 3.47l0 2.03l-1.964 -1.178a6.649 6.649 0 0 1 -1.536 .178c-3.038 0 -5.5 -2.015 -5.5 -4.5s2.462 -4.5 5.5 -4.5" />
+            <path d="M11.197 15.698c-.69 .196 -1.43 .302 -2.197 .302a8.008 8.008 0 0 1 -2.612 -.432l-2.388 1.432v-2.801c-1.237 -1.082 -2 -2.564 -2 -4.199c0 -3.314 3.134 -6 7 -6c3.782 0 6.863 2.57 7 5.785l0 .233" />
+            <path d="M10 8h.01" />
+            <path d="M7 8h.01" />
+            <path d="M15 14h.01" />
+            <path d="M18 14h.01" />
+        </svg>
+    );
+}
 
 export type PhoneChatAppProps = {
     onClose: () => void;
@@ -43,6 +58,7 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
     const [visitedSessions, setVisitedSessions] = useState<Map<string, ChatSession>>(new Map());
     const [dbReady, setDbReady] = useState(false);
     const [hideTabBar, setHideTabBar] = useState(false);
+    const [messageThreadOpen, setMessageThreadOpen] = useState(false);
     // 左侧导航栏头像
     const [identity, setIdentity] = useState<UserIdentity | null>(null);
     useEffect(() => {
@@ -225,24 +241,31 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
 
     /* 是否处于 chat 首页（未进入任何聊天室、未隐藏 tab 栏） */
     const isHomePage = !activeSession && !activeMascot && !hideTabBar;
+    const showHomeTopbar = isHomePage;
 
     return (
         <div
             className="chat-app absolute inset-0 flex flex-col overflow-hidden z-10"
             {...(activeSession || activeMascot ? { "data-room-active": "" } : {})}
             {...(hideTabBar ? { "data-tabbar-hidden": "" } : {})}
+            {...(activeTab === "message" && messageThreadOpen ? { "data-message-thread-open": "" } : {})}
         >
             {/* Chat app-level custom CSS (lower priority than per-session CSS) */}
             {chatAppCSS && <style dangerouslySetInnerHTML={{ __html: scopeSessionCSS(chatAppCSS, ".chat-app") }} />}
 
             {/* ── 透明顶栏：退出键，仅 chat 首页可见 ── */}
-            {isHomePage && (
+            {showHomeTopbar && (
                 <div className="chat-home-topbar">
                     <div className="chat-home-topbar-safe-area" />
                     <div className="chat-home-topbar-content">
                         <button type="button" className="chat-home-topbar-back" onClick={onClose} aria-label="返回">
                             <ChevronLeft size={22} strokeWidth={1.7} />
                         </button>
+                        {(activeTab === "messages" || activeTab === "contacts" || (activeTab === "message" && !messageThreadOpen) || activeTab === "wallet" || activeTab === "settings") && (
+                            <span className="page-title chat-home-page-title">
+                                {activeTab === "messages" ? "Chat" : activeTab === "contacts" ? "Contact" : activeTab === "message" ? "Message" : activeTab === "wallet" ? "Wallet" : "Setting"}
+                            </span>
+                        )}
                     </div>
                 </div>
             )}
@@ -277,7 +300,7 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
                             onClick={() => setActiveTab("messages")}
                             aria-label="消息"
                         >
-                            <MessageCircle size={21} strokeWidth={1.7} />
+                            <WeChatIcon />
                         </button>
                         <button
                             type="button"
@@ -286,6 +309,14 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
                             aria-label="联系人"
                         >
                             <Users size={21} strokeWidth={1.7} />
+                        </button>
+                        <button
+                            type="button"
+                            className={`chat-side-nav-icon-btn${activeTab === "message" ? " active" : ""}`}
+                            onClick={() => setActiveTab("message")}
+                            aria-label="短信"
+                        >
+                            <Mail size={21} strokeWidth={1.7} />
                         </button>
                         <button
                             type="button"
@@ -345,6 +376,7 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
                             }}
                         />
                     )}
+                    {activeTab === "message" && <MessagePanel onThreadChange={setMessageThreadOpen} />}
                     {activeTab === "feeds" && <MomentsFeed />}
                     {activeTab === "wallet" && <WalletPanel />}
                     {activeTab === "settings" && <UserProfilePanel />}

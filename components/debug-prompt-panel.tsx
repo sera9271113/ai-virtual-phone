@@ -13,7 +13,8 @@ import {
     type MomentsPreviewResult,
 } from "@/lib/moments-engine";
 import { previewCalendarPromptPayload } from "@/lib/calendar-engine";
-import { CHAT_APP_SETTINGS_UPDATED_EVENT, loadChatAppSettings, loadChatContacts, loadChatMessages, loadChatSessions, type ChatSession } from "@/lib/chat-storage";
+import { CHAT_APP_SETTINGS_UPDATED_EVENT, hydrateChatStorage, loadChatAppSettings, loadChatContacts, loadChatMessages, loadChatSessions, type ChatMessage, type ChatSession } from "@/lib/chat-storage";
+import { loadMessageEntries } from "@/lib/message-storage";
 import { loadCharacters } from "@/lib/character-storage";
 import { getAllPosts } from "@/lib/moments-storage";
 import type { LLMMessage } from "@/lib/llm-prompt-assembler";
@@ -48,6 +49,7 @@ import type { MapWorld, GameSave } from "@/lib/map-types";
 
 type CoreDebugMode = "chat" | "moments" | "calendar" | "story" | "vn";
 type DebugMode = CoreDebugMode | ExtraPromptAppId;
+type ChatPromptChannel = "chat" | "message";
 
 type UnifiedMessage = {
     role: string;
@@ -88,6 +90,13 @@ function splitMarkerBadges(marker?: string): string[] {
     return marker.split(" + ").map(part => part.trim()).filter(Boolean);
 }
 
+function getMarkerBadgeKind(badge: string): "history" | "preset" | "memory" | "default" {
+    if (/^History\b/i.test(badge)) return "history";
+    if (/预设|preset|指令|输出格式|可选动作/i.test(badge)) return "preset";
+    if (/shortTermMemory|短期记忆/i.test(badge)) return "memory";
+    return "default";
+}
+
 function isExtraPromptMode(mode: DebugMode): mode is ExtraPromptAppId {
     return EXTRA_PROMPT_APPS.some(app => app.id === mode);
 }
@@ -103,6 +112,8 @@ export function DebugPromptPanel() {
     const floatingDragRef = useRef<FloatingDragState | null>(null);
     const suppressFloatingClickRef = useRef(false);
     const [selectedChatSessionId, setSelectedChatSessionId] = useState("");
+    const [chatPromptChannel, setChatPromptChannel] = useState<ChatPromptChannel>("chat");
+    const [chatStorageVersion, setChatStorageVersion] = useState(0);
     const [followUpMode, setFollowUpMode] = useState(false);
 
     // Moments state
@@ -187,7 +198,7 @@ export function DebugPromptPanel() {
                 label: charNameById.get(session.contactId) || session.alias || session.contactId,
             };
         });
-    }, [enabled, chatState?.session?.id]);
+    }, [enabled, chatState?.session?.id, chatStorageVersion]);
     const activeChatSession = chatSessionOptions.find(option => option.session.id === selectedChatSessionId)?.session
         ?? chatState?.session
         ?? null;
@@ -201,6 +212,8 @@ export function DebugPromptPanel() {
             || appTags.includes("group_chat");
         if (!isChatRequest) return null;
         if (promptSnapshot.sessionId !== activeChatSession.id) return null;
+        const isMessageSnapshot = promptSnapshot.appTags?.includes("message") === true;
+        if (chatPromptChannel === "message" ? !isMessageSnapshot : isMessageSnapshot) return null;
         return promptSnapshot;
     })();
 
@@ -236,6 +249,23 @@ export function DebugPromptPanel() {
         window.addEventListener(CHAT_APP_SETTINGS_UPDATED_EVENT, syncEnabled);
         return () => window.removeEventListener(CHAT_APP_SETTINGS_UPDATED_EVENT, syncEnabled);
     }, []);
+
+    useEffect(() => {
+        if (!enabled) return;
+        let cancelled = false;
+        const refreshChatStorage = () => setChatStorageVersion(version => version + 1);
+        refreshChatStorage();
+        void hydrateChatStorage().then(() => {
+            if (!cancelled) refreshChatStorage();
+        });
+        window.addEventListener("chat-messages-updated", refreshChatStorage);
+        window.addEventListener("message-thread-updated", refreshChatStorage);
+        return () => {
+            cancelled = true;
+            window.removeEventListener("chat-messages-updated", refreshChatStorage);
+            window.removeEventListener("message-thread-updated", refreshChatStorage);
+        };
+    }, [enabled]);
 
     useEffect(() => {
         if (mode !== "chat" || !activeChatSnapshot) return;
@@ -319,16 +349,26 @@ export function DebugPromptPanel() {
         setError(null);
         setLoading(true);
         try {
-            const latestMessages = loadChatMessages(activeChatSession.id);
+            const latestMessages: ChatMessage[] = chatPromptChannel === "message"
+                ? loadMessageEntries(activeChatSession.contactId).map(entry => ({
+                    id: entry.id,
+                    sessionId: activeChatSession.id,
+                    role: entry.role,
+                    content: entry.content,
+                    status: "sent",
+                    createdAt: entry.createdAt,
+                }))
+                : loadChatMessages(activeChatSession.id);
             if (activeChatSession.isGroup) {
+                if (chatPromptChannel === "message") throw new Error("短信仅支持单人聊天室");
                 await previewGroupPromptRequestSnapshot(activeChatSession, latestMessages);
             } else {
                 await previewPromptRequestSnapshot(
                     activeChatSession,
                     latestMessages,
                     followUpMode
-                        ? { followUpAuto: true, appTags: ["chat", "text", "followup"] }
-                        : { appTags: ["chat", "text"] }
+                        ? { followUpAuto: true, appTags: ["chat", "text", ...(chatPromptChannel === "message" ? ["message"] : [] )], excludeMessageEntries: chatPromptChannel === "message" }
+                        : { appTags: ["chat", "text", ...(chatPromptChannel === "message" ? ["message"] : [])], excludeMessageEntries: chatPromptChannel === "message" }
                 );
             }
             setExpandedIdx(new Set());
@@ -922,6 +962,17 @@ export function DebugPromptPanel() {
                                 <option key={option.session.id} value={option.session.id}>{option.label}</option>
                             ))}
                         </select>
+                        {!activeChatSession?.isGroup && (
+                            <select
+                                value={chatPromptChannel}
+                                onChange={e => setChatPromptChannel(e.target.value as "chat" | "message")}
+                                className="pv-select"
+                                aria-label="聊天渠道"
+                            >
+                                <option value="chat">聊天室</option>
+                                <option value="message">短信</option>
+                            </select>
+                        )}
                         <button onClick={handleChatPreview} disabled={loading || !activeChatSession} className="pv-btn pv-btn-primary">
                             {loading ? "加载中..." : "预览 Prompt"}
                         </button>
@@ -997,7 +1048,7 @@ export function DebugPromptPanel() {
                             <div className="pv-msg-header" onClick={() => toggleExpand(idx)}>
                                 <span className="pv-msg-role" data-role={msg.role}>{msg.role}</span>
                                 {markerBadges.map((badge, bi) => (
-                                    <span key={`${idx}-${bi}`} className="pv-msg-badge">{badge}</span>
+                                    <span key={`${idx}-${bi}`} className="pv-msg-badge" data-kind={getMarkerBadgeKind(badge)}>{badge}</span>
                                 ))}
                                 {msg.depth !== undefined && (
                                     <span className="pv-msg-depth">D:{msg.depth} O:{msg.order}</span>

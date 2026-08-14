@@ -32,9 +32,26 @@ export type WalletTransaction = {
   relatedOrderId?: string;
 };
 
+export type FamilyCardDirection = "requested" | "granted";
+export type FamilyCardStatus = "pending" | "active" | "paused" | "declined";
+
+export type FamilyCard = {
+  id: string;
+  characterId: string;
+  characterName: string;
+  direction: FamilyCardDirection;
+  monthlyLimit: number;
+  usedAmount: number;
+  note: string;
+  status: FamilyCardStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type WalletState = {
   balance: number;
   cards: WalletCard[];
+  familyCards: FamilyCard[];
   transactions: WalletTransaction[];
   defaultCardId: string;
   updatedAt: string;
@@ -43,6 +60,7 @@ export type WalletState = {
 export type WalletPaymentInput = {
   accountId?: string;
   cardId?: string;
+  familyCardId?: string;
   amount: number;
   title: string;
   detail: string;

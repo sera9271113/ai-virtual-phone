@@ -133,10 +133,10 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
           -webkit-tap-highlight-color: transparent;
         }
         .customizer-slider.mt-1 {
-          margin: -12px 0 -20px !important;
+          margin: -3px 0 -19px !important;
         }
         .customizer-slider:not(.mt-2) {
-          margin: -19px 0 !important;
+          margin: -11px 0 -19px !important;
         }
         .customizer-slider::-webkit-slider-runnable-track {
           height: 6px;
@@ -182,7 +182,7 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
         </button>
       </div>
 
-      <div className="px-4 py-2 flex gap-2 w-full">
+      <div className="px-6 py-2 flex gap-2 w-full">
         {[
           { id: "icons", label: "图标设定" },
           { id: "widgets", label: "组件设定" },
@@ -198,7 +198,7 @@ export function DesktopCustomizer({ draft, onDraftChange, onApply, onClose }: De
         ))}
       </div>
 
-      <div className="px-4 pt-1 h-[220px] overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+      <div className="px-6 pt-2 h-[280px] overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
         {activeTab === "icons" && (
           <div className="space-y-3">
             <SegmentControl 

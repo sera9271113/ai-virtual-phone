@@ -7,6 +7,7 @@ import { kvGet, kvSet, registerKvMigration } from "./kv-db";
 export const CHAR_BLOCKED_FIELDS = "CHAR_BLOCKED_FIELDS";
 
 const STORAGE_KEY = "ai_phone_characters_v1";
+export const CHARACTERS_UPDATED_EVENT = "characters-updated";
 const UNSUPPORTED_CHARACTER_IMPORT_FIELDS = [
   "greeting",
   "first_mes",
@@ -83,6 +84,7 @@ export function saveCharacters(chars: Character[]): void {
   if (typeof window === "undefined") return;
   kvSet(STORAGE_KEY, JSON.stringify(chars));
   _charsCache = null;
+  window.dispatchEvent(new CustomEvent(CHARACTERS_UPDATED_EVENT));
 }
 
 export function updateCharacter(id: string, updates: Partial<Character>): Character | null {

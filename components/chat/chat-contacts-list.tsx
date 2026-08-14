@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 import { loadChatContacts, ChatContact, createOrGetSession, ChatSession, addChatContact, pushChatMessage, loadChatMessages } from "@/lib/chat-storage";
 import { resolveUserIdentity } from "@/lib/settings-storage";
 import { PENDING_REPLY_PREFIX } from "@/lib/friend-request-engine";
-import { loadCharacters } from "@/lib/character-storage";
+import { CHARACTERS_UPDATED_EVENT, loadCharacters } from "@/lib/character-storage";
 import { Character } from "@/lib/character-types";
 import { loadMomentPosts } from "@/lib/moments-storage";
 import {
@@ -58,7 +58,8 @@ export function ChatContactsList({ onSelectSession, onSelectMascot, pendingAddCo
     const [mascotAvatarUrl, setMascotAvatarUrl] = useState(mascotSettings.avatarImage || DEFAULT_MASCOT_AVATAR);
 
     const identity = useMemo(() => resolveUserIdentity(), []);
-    const chars = useMemo(() => loadCharacters(), []);
+    const [charactersRevision, setCharactersRevision] = useState(0);
+    const chars = useMemo(() => loadCharacters(), [charactersRevision]);
     const deferredContactFilter = useDeferredValue(contactFilter);
     const bodyRef = useRef<HTMLDivElement>(null);
     const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -117,14 +118,18 @@ export function ChatContactsList({ onSelectSession, onSelectMascot, pendingAddCo
         setLatestPost(map);
 
         setPendingRequests(getPendingFriendRequests());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [chars]);
 
     useEffect(() => {
         refresh();
         const handler = () => refresh();
+        const handleCharactersUpdated = () => setCharactersRevision(value => value + 1);
         window.addEventListener("friend-requests-updated", handler);
-        return () => window.removeEventListener("friend-requests-updated", handler);
+        window.addEventListener(CHARACTERS_UPDATED_EVENT, handleCharactersUpdated);
+        return () => {
+            window.removeEventListener("friend-requests-updated", handler);
+            window.removeEventListener(CHARACTERS_UPDATED_EVENT, handleCharactersUpdated);
+        };
     }, [refresh]);
 
     /** Group contacts by pinyin initial */
@@ -186,13 +191,12 @@ export function ChatContactsList({ onSelectSession, onSelectMascot, pendingAddCo
             <div className="page-shell chat-list-page-shell">
                 <header className="page-header" data-ui="header">
                     <div className="page-header-safe-area" />
-                    {/* 空白行：高度与左侧导航「返回按钮」那一行对齐，本身不放内容 */}
                     <div className="chat-list-header-top-spacer" />
                     <div className="chat-list-search-row">
                         <div className="chat-search-bar chat-search-bar--compact">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-icon)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                             <input
-                                placeholder="Search contacts..."
+                                placeholder=""
                                 value={contactFilter}
                                 onChange={(e) => setContactFilter(e.target.value)}
                                 className="chat-search-input ts-15 w-full bg-transparent outline-none text-[var(--c-text-title)] placeholder:text-[var(--c-icon)]"

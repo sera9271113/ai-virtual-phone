@@ -111,6 +111,8 @@ export type ChatMessage = {
         | "voice_call" | "video_call"
         | "accept_red_packet" | "decline_red_packet" | "accept_transfer" | "decline_transfer"
         | "payment_request" | "accept_payment_request" | "decline_payment_request"
+        | "family_card"
+        | "accept_family_card" | "decline_family_card"
         | "music" | "music_share" | "music_notify" | "music_not_found"
         | "xiaohongshu_note_share"
         | "gift"
@@ -173,6 +175,10 @@ export type ChatMessage = {
         paymentPayerName?: string;
         paymentRequestedAt?: string;
         paymentResolvedAt?: string;
+        familyCardId?: string;
+        familyCardDirection?: "requested" | "granted";
+        familyCardLimit?: number;
+        familyCardNote?: string;
         paymentWalletTransactionId?: string;
         blackMarketTheaterLocalId?: string;
         blackMarketTheaterTemplateId?: string;
@@ -1358,7 +1364,7 @@ export function updateMessageMediaUrl(messageId: string, mediaUrl: string) {
 
 export function updateChatMessage(
     messageId: string,
-    patch: Partial<Pick<ChatMessage, "content" | "mediaType" | "mediaUrl" | "mediaData">>,
+    patch: Partial<Pick<ChatMessage, "role" | "content" | "mediaType" | "mediaUrl" | "mediaData">>,
 ): ChatMessage | null {
     const idx = _messagesCache.findIndex(m => m.id === messageId);
     if (idx === -1) return null;

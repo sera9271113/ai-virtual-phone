@@ -20,7 +20,7 @@ import { createPortal } from "react-dom";
 import { Blocks, Gift, MapPin, Maximize2, ReceiptText, RefreshCw, X } from "lucide-react";
 import { retryChatGeneratedImage } from "@/lib/generated-image-retry";
 import { ScanPayCard } from "@/components/chat/scan-pay-card";
-import { payWithWalletBalance } from "@/lib/wallet-storage";
+import { createFamilyCard, deleteFamilyCard, payWithWalletBalance, updateFamilyCardStatus } from "@/lib/wallet-storage";
 import { formatShoppingPaymentRequestHistory } from "@/lib/shopping-payment-request";
 import { toCustomAppIconId } from "@/lib/custom-app-types";
 
@@ -55,6 +55,8 @@ export const MessageBubble = memo(function MessageBubble({ msg, onUpdate, charNa
             return <ContactCardBubble msg={msg} characterId={characterId} />;
         case "payment_request":
             return <PaymentRequestBubble msg={msg} charName={charName} userName={userName} onShowDetail={onShowDetail} />;
+        case "family_card":
+            return <FamilyCardBubble msg={msg} charName={charName} characterId={characterId} userName={userName} onUpdate={onUpdate} onSystemMessage={onSystemMessage} />;
         case "app_card":
             return <AppCardBubble msg={msg} characterId={characterId} characterName={msg.senderName || charName} />;
         case "image":
@@ -718,6 +720,78 @@ function PaymentRequestBubble({ msg, charName, userName, onShowDetail }: {
             <div className="ui-media-footer px-3.5 py-1.5 ts-12">
                 <span>{statusText}</span>
             </div>
+        </div>
+    );
+}
+
+function FamilyCardBubble({ msg, charName, characterId, userName, onUpdate, onSystemMessage }: {
+    msg: ChatMessage;
+    charName?: string;
+    characterId?: string;
+    userName?: string;
+    onUpdate?: (updated: ChatMessage) => void;
+    onSystemMessage?: (text: string) => void;
+}) {
+    const d = msg.mediaData;
+    const direction = d?.familyCardDirection === "granted" ? "granted" : "requested";
+    const status = d?.status;
+    const isPending = status === "pending";
+    const isAccepted = status === "opened";
+    const isDeclined = status === "declined";
+    const sender = msg.role === "user" ? (userName || "你") : (msg.senderName || charName || "对方");
+    const receiver = msg.role === "user" ? "对方" : (userName || "你");
+    const title = direction === "requested" ? `${sender}索要亲属卡` : `${sender}赠与你亲属卡`;
+    const acceptedText = direction === "requested" ? "已同意" : "已接受";
+    const declinedText = direction === "requested" ? "已拒绝" : "已婉拒";
+
+    const resolve = (accepted: boolean) => {
+        if (!isPending) return;
+        const nextStatus = accepted ? "opened" as const : "declined" as const;
+        let familyCardId = d?.familyCardId;
+        if (familyCardId) {
+            if (accepted) updateFamilyCardStatus(familyCardId, "active");
+            else deleteFamilyCard(familyCardId);
+        } else if (accepted && msg.role === "assistant" && characterId) {
+            const result = createFamilyCard({
+                characterId,
+                characterName: sender,
+                direction: "granted",
+                monthlyLimit: d?.familyCardLimit || 0,
+                note: d?.familyCardNote,
+            });
+            if (!result.ok || !result.familyCard) return;
+            familyCardId = result.familyCard.id;
+            updateFamilyCardStatus(familyCardId, "active");
+        }
+        const updatedData = { ...d, familyCardId, status: nextStatus };
+        updateMessageMediaData(msg.id, updatedData);
+        onUpdate?.({ ...msg, mediaData: updatedData });
+        onSystemMessage?.(accepted ? `${receiver}${acceptedText}了${sender}的亲属卡` : `${receiver}${declinedText}了${sender}的亲属卡`);
+    };
+
+    return (
+        <div className="chat-media-card w-[230px] overflow-hidden">
+            <div className="chat-media-mono-header p-3.5" data-state={isDeclined ? "declined" : isAccepted ? "opened" : "sent"}>
+                <div className="flex items-center justify-between gap-2">
+                    <span className="chat-media-type-label font-semibold" style={{ fontSize: "calc(15px*var(--app-text-scale,1))" }}>亲属卡</span>
+                    <span className="ts-11 chat-media-mono-sub">Family Card</span>
+                </div>
+                <div className="ts-16 font-bold chat-media-mono-title mt-3">{title}</div>
+                <div className="ts-12 chat-media-mono-sub mt-1">每月额度 ¥{(d?.familyCardLimit || 0).toFixed(2)}</div>
+                {d?.familyCardNote ? <div className="ts-11 chat-media-mono-sub mt-1 line-clamp-2">{d.familyCardNote}</div> : null}
+            </div>
+            {isPending && msg.role === "assistant" ? (
+                <div className="ui-media-footer p-2 flex gap-2">
+                    <button type="button" className="flex-1 py-1 rounded border border-[#d8d8dc] ts-12" onClick={() => resolve(false)}>
+                        {direction === "requested" ? "拒绝" : "婉拒"}
+                    </button>
+                    <button type="button" className="flex-1 py-1 rounded bg-[#171717] text-white ts-12" onClick={() => resolve(true)}>
+                        {direction === "requested" ? "同意" : "接受"}
+                    </button>
+                </div>
+            ) : !isPending ? (
+                <div className="ui-media-footer px-3.5 py-1.5 ts-12"><span>{isAccepted ? acceptedText : declinedText}</span></div>
+            ) : <div className="ui-media-footer px-3.5 py-1.5 ts-12"><span>等待对方处理</span></div>}
         </div>
     );
 }

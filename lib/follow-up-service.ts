@@ -22,10 +22,12 @@ import { generateChatCompletion, flattenCompletionResult } from "./chat-engine";
 import { loadFollowUpConfig } from "./settings-storage";
 import { parseAIResponse } from "./rich-message-parser";
 import type { ParsedMessagePart } from "./rich-message-parser";
+import { pushMessageEntry } from "./message-storage";
 import { loadCharacters } from "./character-storage";
 import { bgSetInterval } from "./bg-timer";
 import { dispatchChatMessageNotice } from "./chat-notification-events";
 import { settleShoppingPaymentRequest } from "./shopping-payment-request";
+import { activateFamilyCard, deleteFamilyCard } from "./wallet-storage";
 import {
     createPendingChatGeneratedImageData,
     generateAndApplyChatGeneratedImage,
@@ -70,6 +72,10 @@ const periodCareFiringSet = new Set<string>();
 const backgroundReplyFiringSet = new Set<string>();
 let lastPeriodCarePollAt = 0;
 
+function isSessionBlacklisted(sessionId: string): boolean {
+    return Boolean(loadChatSessions().find(session => session.id === sessionId)?.isBlacklisted);
+}
+
 // ── Public API ─────────────────────────────────────────────
 
 export function startFollowUpService() {
@@ -95,7 +101,11 @@ export function stopFollowUpService() {
 
 /** Schedule a follow-up for a session (called by ChatRoom after AI replies).
  *  Purely anxiety-driven: no anxiety field or below threshold → no follow-up. */
-export function scheduleFollowUp(sessionId: string, count: number, stateValues?: StateValue[]) {
+export function scheduleFollowUp(sessionId: string, count: number, stateValues?: StateValue[], channel: "chat" | "message" = "chat") {
+    if (channel === "chat" && isSessionBlacklisted(sessionId)) {
+        clearFollowUpSchedule(sessionId);
+        return;
+    }
     const config = loadFollowUpConfig();
 
     if (!stateValues || stateValues.length === 0) {
@@ -130,6 +140,7 @@ export async function requestBackgroundChatReply(sessionId: string): Promise<{ o
     if (backgroundReplyFiringSet.has(sessionId)) return { ok: false, skipped: "already_running" };
     const session = loadChatSessions().find(s => s.id === sessionId);
     if (!session) return { ok: false, skipped: "missing_session" };
+    if (session.isBlacklisted) return { ok: false, skipped: "blacklisted" };
 
     backgroundReplyFiringSet.add(sessionId);
     try {
@@ -140,6 +151,7 @@ export async function requestBackgroundChatReply(sessionId: string): Promise<{ o
             latestMessages,
             { appTags: session.isGroup ? undefined : ["chat", "text"] },
         ));
+        if (isSessionBlacklisted(session.id)) return { ok: false, skipped: "blacklisted" };
         const { hasVisible, stateValues } = await parseAndSaveResponse(
             aiResponseText,
             session.id,
@@ -303,6 +315,14 @@ async function fireFollowUp(sched: { sessionId: string; count: number; delaySec?
         const finalSilenceSec = Math.round((nowMs - lastUserTime) / 1000);
         const messagesWithHint: ChatMessage[] = [
             ...annotatedMessages,
+            ...(session.isBlacklisted ? [{
+                id: `_blacklist_${nowMs}`,
+                sessionId: session.id,
+                role: "system" as const,
+                content: "系统状态：用户已将你在 Chat 中拉黑。你只能通过 Message 短信联系用户，并且知道自己已被拉黑。请根据你的人设自然地表达对此事的反应。",
+                status: "sent" as const,
+                createdAt: new Date().toISOString(),
+            }] : []),
             {
                 id: `_silence_${nowMs}`,
                 sessionId: session.id,
@@ -327,6 +347,25 @@ async function fireFollowUp(sched: { sessionId: string; count: number; delaySec?
         if (cancelledWhileFiring.has(sched.sessionId)) {
             console.log(`[FollowUp] Cancelled during API call, discarding result for session=${sched.sessionId}`);
             cancelledWhileFiring.delete(sched.sessionId);
+            return;
+        }
+        if (isSessionBlacklisted(session.id) && session.isBlacklisted !== true) return;
+
+        if (session.isBlacklisted) {
+            const parsed = parseAIResponse(aiResponseText, []);
+            const reply = parsed.parts
+                .filter(part => !part.mediaType && part.content.trim())
+                .map(part => part.content.trim())
+                .join("\n\n")
+                .trim();
+            if (reply) {
+                pushMessageEntry({ characterId: session.contactId, role: "assistant", content: reply });
+                window.dispatchEvent(new CustomEvent("message-thread-updated", { detail: { characterId: session.contactId } }));
+            }
+            const previousState = getLatestCharacterStateValues(session.contactId);
+            const { stateValues } = parseAIResponse(aiResponseText, previousState);
+            if (count < MAX_FOLLOW_UPS) scheduleFollowUp(session.id, count, stateValues, "message");
+            window.dispatchEvent(new CustomEvent("followup-fired", { detail: { sessionId: session.id } }));
             return;
         }
 
@@ -361,7 +400,7 @@ async function fireTimedWake(sched: TimedWakeSchedule) {
     try {
         const sessions = loadChatSessions();
         const session = sessions.find(s => s.id === sched.sessionId);
-        if (!session || session.contactId !== sched.characterId) return;
+        if (!session || session.isBlacklisted || session.contactId !== sched.characterId) return;
 
         const latestMessages = loadChatMessages(session.id);
         const elapsedMinutes = Math.max(1, Math.round((Date.now() - sched.createdAt) / 60000));
@@ -378,6 +417,7 @@ async function fireTimedWake(sched: TimedWakeSchedule) {
                 timedWakeIntent: sched.intent,
             },
         ));
+        if (isSessionBlacklisted(session.id)) return;
 
         const { hasVisible, stateValues } = await parseAndSaveResponse(
             aiResponseText,
@@ -417,7 +457,7 @@ async function fireMenstrualPeriodCare(input: {
     try {
         const sessions = loadChatSessions();
         const session = sessions.find(s => s.id === input.sessionId);
-        if (!session || session.isGroup || session.contactId !== input.characterId) return;
+        if (!session || session.isBlacklisted || session.isGroup || session.contactId !== input.characterId) return;
         if (hasMenstrualPeriodCareTriggered(input.characterId, input.event.cycleKey)) return;
 
         const latestMessages = loadChatMessages(session.id);
@@ -433,6 +473,7 @@ async function fireMenstrualPeriodCare(input: {
                 periodCareContext: input.event.context,
             },
         ));
+        if (isSessionBlacklisted(session.id)) return;
 
         const { hasVisible, stateValues } = await parseAndSaveResponse(
             aiResponseText,
@@ -473,7 +514,9 @@ function handleFollowUpMediaAction(
     sessionId: string,
     contextMessages: ChatMessage[],
 ) {
-    const targetMediaType = actionType.includes("payment_request")
+    const targetMediaType = actionType.includes("family_card")
+        ? "family_card"
+        : actionType.includes("payment_request")
         ? "payment_request"
         : actionType.includes("red_packet") ? "red_packet" : "transfer";
     const targetMsg = [...contextMessages].reverse().find(
@@ -482,13 +525,35 @@ function handleFollowUpMediaAction(
     if (!targetMsg) return;
 
     const charName = resolveFollowUpSenderName(sessionId);
+    const session = loadChatSessions().find(item => item.id === sessionId);
     const userName = "你";
     const responseBatchId = createResponseBatchId();
 
     let newStatus: "opened" | "received" | "declined" | "paid";
     let sysText: string;
     let rawResponseText: string;
-    if (actionType === "accept_red_packet") {
+    if (actionType === "accept_family_card") {
+        newStatus = "opened";
+        const isRequest = targetMsg.mediaData?.familyCardDirection === "requested";
+        sysText = isRequest ? `${charName}同意给${userName}开通亲属卡` : `${charName}接受了${userName}赠送的亲属卡`;
+        rawResponseText = `[${sysText}]`;
+        if (session && !session.isGroup) {
+            activateFamilyCard({
+                familyCardId: targetMsg.mediaData?.familyCardId,
+                characterId: session.contactId,
+                characterName: charName,
+                direction: targetMsg.mediaData?.familyCardDirection || "requested",
+                monthlyLimit: targetMsg.mediaData?.familyCardLimit || 0,
+                note: targetMsg.mediaData?.familyCardNote,
+            });
+        }
+    } else if (actionType === "decline_family_card") {
+        newStatus = "declined";
+        const isRequest = targetMsg.mediaData?.familyCardDirection === "requested";
+        sysText = isRequest ? `${charName}拒绝给${userName}开通亲属卡` : `${charName}婉拒了${userName}赠送的亲属卡`;
+        rawResponseText = `[${sysText}]`;
+        if (targetMsg.mediaData?.familyCardId) deleteFamilyCard(targetMsg.mediaData.familyCardId);
+    } else if (actionType === "accept_red_packet") {
         newStatus = "opened";
         sysText = `${charName}领取了${userName}的红包`;
         rawResponseText = `[${charName}领取了${userName}的红包]`;
@@ -573,6 +638,9 @@ async function parseAndSaveResponse(
     followUpIndex: number | undefined,
     contextMessages: ChatMessage[],
 ): Promise<{ hasVisible: boolean; newCount: number; stateValues: StateValue[] }> {
+    if (isSessionBlacklisted(sessionId)) {
+        return { hasVisible: false, newCount: currentCount, stateValues: [] };
+    }
     const responseBatchId = createResponseBatchId();
     void contextMessages;
     const sessions = loadChatSessions();
@@ -591,7 +659,8 @@ async function parseAndSaveResponse(
         if (p.mediaType === "video_call") { triggerCall = "video"; return false; }
         if (p.mediaType === "accept_red_packet" || p.mediaType === "decline_red_packet"
             || p.mediaType === "accept_transfer" || p.mediaType === "decline_transfer"
-            || p.mediaType === "accept_payment_request" || p.mediaType === "decline_payment_request") {
+            || p.mediaType === "accept_payment_request" || p.mediaType === "decline_payment_request"
+            || p.mediaType === "accept_family_card" || p.mediaType === "decline_family_card") {
             handleFollowUpMediaAction(p.mediaType, sessionId, contextMessages);
             return false;
         }

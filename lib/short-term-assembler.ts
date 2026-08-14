@@ -29,6 +29,7 @@ import { loadChatOfflineProjectionEntries } from "./chat-offline-storage";
 import { loadCheckPhoneProjectionEntries } from "./checkphone-storage";
 import { formatShoppingPaymentRequestHistory } from "./shopping-payment-request";
 import { loadCustomAppTimelineEntries } from "./custom-app-storage";
+import { loadMessageEntries } from "./message-storage";
 import {
     canCharacterSeeMomentPost,
     getVisibleMomentCommentsForCharacter,
@@ -51,7 +52,7 @@ function formatPhotoDirectiveForPrompt(msg: ChatMessage): string {
 export type NativeTimelineEntry = {
     id: string;
     sourceApp: "chat" | "moments" | "story" | "vn" | "map" | "game" | "diary" | "xiaohongshu" | "interview_magazine" | "cocreate" | "checkphone" | "custom_app";
-    sourceDetail?: "direct" | "group" | "system" | "story" | "chat_offline" | "game" | "diary_entry" | "notewall" | "xiaohongshu" | "black_market_theater" | "interview_issue" | "interview_shared_issue" | "cocreate_project" | "checkphone" | "custom_app_event"; // chat sub-type: 1:1 vs group chat vs system note
+    sourceDetail?: "direct" | "message" | "group" | "system" | "story" | "chat_offline" | "game" | "diary_entry" | "notewall" | "xiaohongshu" | "black_market_theater" | "interview_issue" | "interview_shared_issue" | "cocreate_project" | "checkphone" | "custom_app_event"; // chat sub-type: 1:1 vs Message vs group chat vs system note
     authorType?: "user" | "character" | "npc"; // who authored this entry
     postAuthorType?: "user" | "character"; // for moments: who owns the parent post
     sessionId?: string;
@@ -249,6 +250,11 @@ export function loadNativeTimeline(
                     items: msg.mediaData?.paymentRequestItems,
                     itemsText: msg.mediaData?.paymentRequestItemsText,
                 });
+                else if (msg.mediaType === "family_card") content = msg.role === "user" && msg.mediaData?.familyCardDirection === "requested"
+                    ? `[用户索要亲属卡:${msg.mediaData?.familyCardLimit ?? 0}:${msg.mediaData?.familyCardNote || ""}]`
+                    : msg.role === "user" && msg.mediaData?.familyCardDirection === "granted"
+                        ? `[用户赠送亲属卡:${msg.mediaData?.familyCardLimit ?? 0}:${msg.mediaData?.familyCardNote || ""}]`
+                        : `[亲属卡:${msg.mediaData?.familyCardLimit ?? 0}:${msg.mediaData?.familyCardNote || ""}]`;
                 else if (msg.mediaType === "music_share") content = `[音乐分享:${msg.mediaData?.musicTitle || ""}]`;
                 else if (msg.mediaType === "xiaohongshu_note_share") content = formatXiaohongshuShareForPrompt({
                     author: msg.mediaData?.xiaohongshuAuthor,
@@ -329,6 +335,13 @@ export function loadNativeTimeline(
             else if (msg.mediaType === "decline_transfer") content = "[拒收转账]";
             else if (msg.mediaType === "accept_payment_request") content = "[接受代付]";
             else if (msg.mediaType === "decline_payment_request") content = "[拒绝代付]";
+            else if (msg.mediaType === "accept_family_card") content = "[同意亲属卡]";
+            else if (msg.mediaType === "decline_family_card") content = "[拒绝亲属卡]";
+            else if (msg.mediaType === "family_card") content = msg.role === "user" && msg.mediaData?.familyCardDirection === "requested"
+                ? `[用户索要亲属卡:${msg.mediaData?.familyCardLimit ?? 0}:${msg.mediaData?.familyCardNote || ""}]`
+                : msg.role === "user" && msg.mediaData?.familyCardDirection === "granted"
+                    ? `[用户赠送亲属卡:${msg.mediaData?.familyCardLimit ?? 0}:${msg.mediaData?.familyCardNote || ""}]`
+                    : `[亲属卡:${msg.mediaData?.familyCardLimit ?? 0}:${msg.mediaData?.familyCardNote || ""}]`;
             else if (msg.mediaType === "poke") content = `[我拍了拍${msg.mediaData?.pokeTarget || ""}]`;
             // Represent rich media as text when content is empty
             else if (!content && msg.mediaType) {
@@ -387,6 +400,21 @@ export function loadNativeTimeline(
                 content: `${msgLabel} ${sender}: ${content}`,
             });
         }
+    }
+
+    for (const message of loadMessageEntries(characterId)) {
+        if (options?.afterTimestamp && message.createdAt <= options.afterTimestamp) continue;
+        const sender = message.role === "user" ? userName : charName;
+        const label = formatPromptEventLabel("短信", message.createdAt, timeAware, timestampOptions);
+        const content = stripStateAndInnerForPrompt(message.content || "").trim();
+        if (!content) continue;
+        entries.push({
+            id: `message:${message.id}`,
+            sourceApp: "chat",
+            sourceDetail: "message",
+            timestamp: message.createdAt,
+            content: `${label} ${sender}: ${content}`,
+        });
     }
 
     // ── Moments posts & comments (grouped by post) ──
@@ -912,6 +940,7 @@ export function prepareShortTermContext(
         excludeOfflineSessionId?: string;
         includeNativeToolHistory?: boolean;
         includeDirectChatEntries?: boolean;
+        excludeMessageEntries?: boolean;
         timeAware?: boolean;
         promptTimestampOptions?: PromptTimestampOptions;
     },
@@ -1034,6 +1063,13 @@ export function prepareShortTermContext(
         const chatEntries = timeline.filter(e => e.sourceApp === "chat" && e.sourceDetail === "direct");
         if (chatEntries.length > 0) {
             raw.push({ tag: "recent_chat", order: FEATURE_ORDER.chat, entries: chatEntries });
+        }
+    }
+
+    if (!options?.excludeMessageEntries) {
+        const messageEntries = timeline.filter(e => e.sourceApp === "chat" && e.sourceDetail === "message");
+        if (messageEntries.length > 0) {
+            raw.push({ tag: "recent_chat", order: FEATURE_ORDER.chat, entries: messageEntries });
         }
     }
 

@@ -43,6 +43,7 @@ import {
     type GroupAdminAction,
 } from "@/lib/group-admin";
 import { clearChatOfflineTurns } from "@/lib/chat-offline-storage";
+import { cancelFollowUp } from "@/lib/follow-up-service";
 import { triggerDeleteFriendReaction } from "@/lib/friend-request-engine";
 import { loadCharacters } from "@/lib/character-storage";
 import { resolveUserIdentity } from "@/lib/settings-storage";
@@ -453,6 +454,7 @@ export function ChatSettingsPanel({
     const [videoBackground, setVideoBackground] = useState<string>(session.videoBackground || "");
     const [voiceBackground, setVoiceBackground] = useState<string>(session.voiceBackground || "");
     const [isPinned, setIsPinned] = useState(session.isPinned || false);
+    const [isBlacklisted, setIsBlacklisted] = useState(session.isBlacklisted === true);
     const [visionImagePromptLimit, setVisionImagePromptLimit] = useState(() => normalizeVisionImagePromptLimit(session.visionImagePromptLimit));
     const [bilingualTranslationEnabled, setBilingualTranslationEnabled] = useState(session.bilingualTranslationEnabled !== false);
     const [collapseBilingualTranslation, setCollapseBilingualTranslation] = useState(session.collapseBilingualTranslation !== false);
@@ -1076,7 +1078,6 @@ export function ChatSettingsPanel({
                                 <button
                                     type="button"
                                     className="chat-hero-decorations"
-                                    onClick={() => setShowDecorationEditor(true)}
                                     aria-label="编辑装饰图标"
                                 >
                                     {activeDecorations.map(meta => (
@@ -1092,7 +1093,6 @@ export function ChatSettingsPanel({
                                 <button
                                     type="button"
                                     className="chat-hero-decorations chat-hero-decorations--empty"
-                                    onClick={() => setShowDecorationEditor(true)}
                                     aria-label="编辑装饰图标"
                                 />
                             )}
@@ -1494,6 +1494,25 @@ export function ChatSettingsPanel({
                 {/* ===== 其他 ===== */}
                 {activeCategory === "other" && (
                 <div className="menu-group">
+                    {!session.isGroup && (
+                        <div className="menu-item">
+                            <ChatInfoIcon icon={UserMinus} color="var(--c-icon)" />
+                            <div className="menu-label-group">
+                                <span className="menu-label">拉黑</span>
+                                <span className="menu-desc">开启后角色只能通过 Message 联系你</span>
+                            </div>
+                            <div className="menu-right">
+                                <Toggle
+                                    checked={isBlacklisted}
+                                    onChange={checked => {
+                                        setIsBlacklisted(checked);
+                                        updateSession({ isBlacklisted: checked });
+                                        if (checked) cancelFollowUp(session.id);
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
                     <button className="menu-item" onClick={() => setShowConfirmClearTools(true)}>
                         <ChatInfoIcon icon={Code} color="var(--c-danger)" />
                         <div className="menu-label-group">

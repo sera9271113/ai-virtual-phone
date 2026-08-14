@@ -354,6 +354,7 @@ type ChatPromptBuildOptions = {
     appTags?: string[];
     attachedImages?: string[];
     excludeOfflineSessionId?: string;
+    excludeMessageEntries?: boolean;
     promptProfile?: CustomAppPromptProfile;
     extraWorldBookIds?: string[];
     worldBookActivationContext?: string;
@@ -1766,6 +1767,7 @@ export async function buildChatPromptMessages(
         includeDirectChatEntries: isOfflineMode,
         includeNativeToolHistory: usesNativeActions,
         excludeOfflineSessionId: options?.excludeOfflineSessionId,
+        excludeMessageEntries: options?.excludeMessageEntries,
         promptTimestampOptions,
     });
     const promptHistory = applyVisionImagePromptLimit(

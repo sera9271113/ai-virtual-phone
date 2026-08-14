@@ -4,6 +4,15 @@
  * - `@keyframes` / `@font-face` blocks are passed through unchanged.
  * - Media queries are handled recursively.
  */
+export function extractCssImports(raw: string): { imports: string[]; css: string } {
+  const imports: string[] = [];
+  const css = raw.replace(/(^|\n)\s*@import\s+(?:url\(\s*)?["']?([^"')\s;]+)["']?\s*\)?[^;]*;?/gi, (_match, prefix: string, href: string) => {
+    if (href && !imports.includes(href)) imports.push(href);
+    return prefix;
+  });
+  return { imports, css };
+}
+
 export function scopeSessionCSS(raw: string, scopeSelector: string): string {
   if (!raw.trim()) return "";
 

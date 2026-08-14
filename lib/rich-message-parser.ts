@@ -102,6 +102,21 @@ const RICH_PATTERNS: {
         }),
     },
     {
+        // 角色赠送亲属卡：[亲属卡:每月额度:备注]
+        regex: new RegExp(`\\[亲属卡${C}(\\d+(?:\\.\\d+)?)${C}([^\\]]*)\\]`),
+        build: (m) => ({
+            content: "",
+            mediaType: "family_card" as const,
+            mediaData: {
+                familyCardDirection: "granted" as const,
+                familyCardLimit: parseFloat(m[1]),
+                familyCardNote: m[2].trim(),
+                status: "pending" as const,
+                label: "亲属卡",
+            },
+        }),
+    },
+    {
         // 群聊赠礼：[礼物:商品名:收礼人]，兼容旧格式：[礼物:商品名:送给收礼人]
         regex: new RegExp(`\\[礼物${C}([^\\]：:]+)${C}(?:送给)?([^\\]]+)\\]`),
         build: (m) => {
@@ -345,6 +360,14 @@ const RICH_PATTERNS: {
     {
         regex: /\[拒绝代付\]/,
         build: () => ({ content: "", mediaType: "decline_payment_request" as const }),
+    },
+    {
+        regex: /\[(?:同意|接受)亲属卡\]/,
+        build: () => ({ content: "", mediaType: "accept_family_card" as const }),
+    },
+    {
+        regex: /\[(?:拒绝|婉拒)亲属卡\]/,
+        build: () => ({ content: "", mediaType: "decline_family_card" as const }),
     },
 ];
 

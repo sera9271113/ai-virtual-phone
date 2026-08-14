@@ -1436,6 +1436,14 @@ export function formatRichMediaForHistory(msg: ChatMessage, userName: string, ch
                 items: d?.paymentRequestItems,
                 itemsText: d?.paymentRequestItemsText,
             });
+        case "family_card":
+            if (msg.role === "user" && d?.familyCardDirection === "requested") {
+                return `[用户索要亲属卡:${d?.familyCardLimit ?? 0}:${d?.familyCardNote || ""}]（这是用户发来的待处理亲属卡请求，请在本轮明确回复，并在同意或拒绝时输出对应动作：[同意亲属卡] 或 [拒绝亲属卡]。）`;
+            }
+            if (msg.role === "user" && d?.familyCardDirection === "granted") {
+                return `[用户赠送亲属卡:${d?.familyCardLimit ?? 0}:${d?.familyCardNote || ""}]（这是用户发来的待处理亲属卡，请在本轮明确回复，并在同意或拒绝时输出对应动作：[同意亲属卡] 或 [拒绝亲属卡]。）`;
+            }
+            return `[亲属卡:${d?.familyCardLimit ?? 0}:${d?.familyCardNote || ""}]`;
         case "contact_card":
             return `[名片:${d?.contactCardName || d?.label || "联系人"}]`;
         case "app_card": {
@@ -1507,6 +1515,10 @@ export function formatRichMediaForHistory(msg: ChatMessage, userName: string, ch
         case "decline_payment_request":
             if (isGroup && d?.claimer && d?.owner) return `[${d.claimer}拒绝了${d.owner}的代付]`;
             return "[拒绝代付]";
+        case "accept_family_card":
+            return "[同意亲属卡]";
+        case "decline_family_card":
+            return "[拒绝亲属卡]";
         default:
             return msg.content;
     }

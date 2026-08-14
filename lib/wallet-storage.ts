@@ -1,5 +1,5 @@
 import { kvGet, kvSet, registerKvMigration } from "./kv-db";
-import type { WalletAccountType, WalletCard, WalletPaymentInput, WalletPaymentResult, WalletState, WalletTransaction } from "./wallet-types";
+import type { FamilyCard, FamilyCardDirection, WalletAccountType, WalletCard, WalletPaymentInput, WalletPaymentResult, WalletState, WalletTransaction } from "./wallet-types";
 
 const WALLET_STATE_KEY = "ai_phone_wallet_state_v1";
 const LEGACY_DEFAULT_WALLET_CARD_ID = "wallet_default_balance_card";
@@ -108,6 +108,30 @@ function normalizeTransaction(value: unknown): WalletTransaction | null {
   };
 }
 
+function normalizeFamilyCard(value: unknown): FamilyCard | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const id = cleanText(record.id, 120);
+  const characterId = cleanText(record.characterId, 120);
+  const characterName = cleanText(record.characterName, 80);
+  if (!id || !characterId || !characterName) return null;
+  const direction = record.direction === "requested" ? "requested" : "granted";
+  const status = record.status === "active" || record.status === "paused" || record.status === "declined" ? record.status : "pending";
+  const now = new Date().toISOString();
+  return {
+    id,
+    characterId,
+    characterName,
+    direction,
+    monthlyLimit: normalizeMoney(record.monthlyLimit),
+    usedAmount: normalizeMoney(record.usedAmount),
+    note: cleanText(record.note, 240),
+    status,
+    createdAt: cleanText(record.createdAt, 80) || now,
+    updatedAt: cleanText(record.updatedAt, 80) || now,
+  };
+}
+
 function normalizeWalletState(state: WalletState): WalletState {
   const now = new Date().toISOString();
   const cards = state.cards.length > 0 ? state.cards : [createDefaultWalletCard(now)];
@@ -119,6 +143,11 @@ function normalizeWalletState(state: WalletState): WalletState {
       isDefault: card.id === defaultCardId,
       balance: normalizeMoney(card.balance),
     })),
+    familyCards: state.familyCards.map(card => ({
+      ...card,
+      monthlyLimit: normalizeMoney(card.monthlyLimit),
+      usedAmount: Math.min(normalizeMoney(card.usedAmount), normalizeMoney(card.monthlyLimit)),
+    })).slice(0, 100),
     transactions: state.transactions.slice(0, 300),
     defaultCardId,
     updatedAt: state.updatedAt || now,
@@ -131,6 +160,7 @@ export function createDefaultWalletState(): WalletState {
   return {
     balance: DEFAULT_WALLET_BALANCE,
     cards: [card],
+    familyCards: [],
     transactions: [{
       id: "wallet_initial_balance",
       cardId: WALLET_BALANCE_ACCOUNT_ID,
@@ -163,10 +193,14 @@ function migrateLegacyParsedState(parsed: Record<string, unknown>): WalletState 
   const transactions = Array.isArray(parsed.transactions)
     ? parsed.transactions.map(normalizeTransaction).filter((transaction): transaction is WalletTransaction => Boolean(transaction))
     : [];
+  const familyCards = Array.isArray(parsed.familyCards)
+    ? parsed.familyCards.map(normalizeFamilyCard).filter((card): card is FamilyCard => Boolean(card))
+    : [];
   const defaultCardId = cleanText(parsed.defaultCardId, 120);
   return normalizeWalletState({
     balance,
     cards: normalizedCards,
+    familyCards,
     transactions,
     defaultCardId: normalizedCards.some(card => card.id === defaultCardId) ? defaultCardId : normalizedCards[0].id,
     updatedAt: cleanText(parsed.updatedAt, 80) || now,
@@ -216,6 +250,94 @@ export function getWalletBalance(state: WalletState): number {
 
 export function getWalletTotalBalance(state: WalletState): number {
   return normalizeMoney(state.balance) + state.cards.reduce((sum, card) => sum + normalizeMoney(card.balance), 0);
+}
+
+export function createFamilyCard(input: {
+  characterId: string;
+  characterName: string;
+  direction: FamilyCardDirection;
+  monthlyLimit: number;
+  note?: string;
+}): { ok: boolean; state: WalletState; familyCard?: FamilyCard; error?: string } {
+  const current = loadWalletState();
+  const characterId = cleanText(input.characterId, 120);
+  const characterName = cleanText(input.characterName, 80);
+  const monthlyLimit = normalizeMoney(input.monthlyLimit);
+  if (!characterId || !characterName) return { ok: false, state: current, error: "请选择角色。" };
+  if (monthlyLimit <= 0) return { ok: false, state: current, error: "额度需要大于 0。" };
+  const now = new Date().toISOString();
+  const familyCard: FamilyCard = {
+    id: generateWalletId("family_card"),
+    characterId,
+    characterName,
+    direction: input.direction,
+    monthlyLimit,
+    usedAmount: 0,
+    note: cleanText(input.note, 240),
+    status: "pending",
+    createdAt: now,
+    updatedAt: now,
+  };
+  const state = saveWalletState({ ...current, familyCards: [familyCard, ...current.familyCards] });
+  return { ok: true, state, familyCard };
+}
+
+export function updateFamilyCardStatus(familyCardId: string, status: "active" | "declined", direction?: FamilyCardDirection): WalletState {
+  const current = loadWalletState();
+  const now = new Date().toISOString();
+  return saveWalletState({
+    ...current,
+    familyCards: current.familyCards.map(card => card.id === familyCardId ? { ...card, status, ...(direction ? { direction } : {}), updatedAt: now } : card),
+  });
+}
+
+export function updateFamilyCardDirection(familyCardId: string, direction: FamilyCardDirection): WalletState {
+  const current = loadWalletState();
+  const now = new Date().toISOString();
+  return saveWalletState({
+    ...current,
+    familyCards: current.familyCards.map(card => card.id === familyCardId ? { ...card, direction, updatedAt: now } : card),
+  });
+}
+
+export function activateFamilyCard(input: {
+  familyCardId?: string;
+  characterId: string;
+  characterName: string;
+  direction: FamilyCardDirection;
+  monthlyLimit: number;
+  note?: string;
+}): WalletState {
+  const current = loadWalletState();
+  const familyCardId = cleanText(input.familyCardId, 120) || generateWalletId("family_card");
+  const now = new Date().toISOString();
+  const existing = current.familyCards.find(card => card.id === familyCardId);
+  const familyCard: FamilyCard = existing
+    ? { ...existing, status: "active", direction: input.direction, updatedAt: now }
+    : {
+        id: familyCardId,
+        characterId: cleanText(input.characterId, 120),
+        characterName: cleanText(input.characterName, 80),
+        direction: input.direction,
+        monthlyLimit: normalizeMoney(input.monthlyLimit),
+        usedAmount: 0,
+        note: cleanText(input.note, 240),
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+      };
+  return saveWalletState({
+    ...current,
+    familyCards: [familyCard, ...current.familyCards.filter(card => card.id !== familyCardId)],
+  });
+}
+
+export function deleteFamilyCard(familyCardId: string): WalletState {
+  const current = loadWalletState();
+  return saveWalletState({
+    ...current,
+    familyCards: current.familyCards.filter(card => card.id !== familyCardId),
+  });
 }
 
 export function createWalletCard(input?: Partial<Pick<WalletCard, "title" | "bankLabel" | "maskedNumber" | "cardStyle" | "balance" | "note" | "accentLabel">>): WalletState {
@@ -433,8 +555,36 @@ export function payWithWalletAccount(input: WalletPaymentInput): WalletPaymentRe
   const current = loadWalletState();
   const paymentAmount = normalizeMoney(input.amount);
   if (paymentAmount <= 0) return { ok: false, state: current, error: "付款金额无效。" };
-  const accountId = input.accountId || input.cardId || WALLET_BALANCE_ACCOUNT_ID;
   const now = new Date().toISOString();
+
+  if (input.familyCardId) {
+    const familyCard = current.familyCards.find(card => card.id === input.familyCardId);
+    if (!familyCard || familyCard.status !== "active" || familyCard.direction !== "granted") {
+      return { ok: false, state: current, error: "这张亲属卡当前不可用。" };
+    }
+    const remaining = normalizeMoney(familyCard.monthlyLimit - familyCard.usedAmount);
+    if (remaining < paymentAmount) return { ok: false, state: current, error: "亲属卡本月额度不足。" };
+    const usedAfter = normalizeMoney(familyCard.usedAmount + paymentAmount);
+    const transaction = createTransaction({
+      accountId: familyCard.id,
+      accountType: "card",
+      title: cleanText(input.title, 120) || "亲属卡付款",
+      amount: -paymentAmount,
+      kind: "payment",
+      category: cleanText(input.category, 80) || "亲属卡消费",
+      detail: cleanText(input.detail, 400) || `${familyCard.characterName}赠送的亲属卡付款`,
+      balanceAfter: normalizeMoney(familyCard.monthlyLimit - usedAfter),
+      relatedOrderId: input.relatedOrderId,
+    });
+    const next = saveWalletState({
+      ...current,
+      familyCards: current.familyCards.map(card => card.id === familyCard.id ? { ...card, usedAmount: usedAfter, updatedAt: now } : card),
+      transactions: [transaction, ...current.transactions],
+    });
+    return { ok: true, state: next, transaction };
+  }
+
+  const accountId = input.accountId || input.cardId || WALLET_BALANCE_ACCOUNT_ID;
 
   if (isBalanceAccountId(accountId)) {
     if (normalizeMoney(current.balance) < paymentAmount) {

@@ -3475,11 +3475,12 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
                         window.dispatchEvent(new CustomEvent("call-declined", { detail: { sessionId: call.sessionId } }));
                         const sessions = loadChatSessions();
                         const sess = sessions.find(s => s.id === call.sessionId);
-                        if (sess) {
+                        if (sess && !sess.isBlacklisted) {
                           const sid = call.sessionId;
                           kvSet("chat-generating:" + sid, JSON.stringify({ startedAt: Date.now() }));
                           const msgs = loadChatMessages(sid);
                           generateChatCompletion(sess, msgs, { appTags: ["chat", "text"] }).then(cr => { const text = flattenCompletionResult(cr);
+                            if (loadChatSessions().find(session => session.id === sid)?.isBlacklisted) return;
                             const { parts, stateValues } = parseAIResponse(text, []);
                             for (const p of parts) {
                               if (p.mediaType === "voice_call" || p.mediaType === "video_call") continue;

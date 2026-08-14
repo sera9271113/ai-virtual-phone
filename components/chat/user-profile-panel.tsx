@@ -31,13 +31,11 @@ import {
     Heart,
     MessageSquare,
     MessageSquareDashed,
-    Palette,
     Keyboard,
     Radio,
     RotateCcw,
     Send,
     SlidersHorizontal,
-    Sticker,
     ThumbsUp,
     Trash2,
     User,
@@ -59,6 +57,42 @@ function ProfileSettingsIcon({ icon: Icon, color }: { icon: LucideIcon; color: s
         <span className="chat-info-icon" style={profileSettingsIconStyle(color)}>
             <Icon size={22} strokeWidth={1.75} />
         </span>
+    );
+}
+
+function InstagramIcon() {
+    return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M4 8a4 4 0 0 1 4 -4h8a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-8a4 4 0 0 1 -4 -4l0 -8" />
+            <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+            <path d="M16.5 7.5v.01" />
+        </svg>
+    );
+}
+
+function MoodSmileIcon() {
+    return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+            <path d="M9 10l.01 0" />
+            <path d="M15 10l.01 0" />
+            <path d="M9.5 15a3.5 3.5 0 0 0 5 0" />
+        </svg>
+    );
+}
+
+function CssFileIcon() {
+    return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+            <path d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4" />
+            <path d="M8 16.5a1.5 1.5 0 0 0 -3 0v3a1.5 1.5 0 0 0 3 0" />
+            <path d="M11 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1v-1a1 1 0 0 1 1 -1h1.25a.75 .75 0 0 1 .75 .75" />
+            <path d="M17 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1v-1a1 1 0 0 1 1 -1h1.25a.75 .75 0 0 1 .75 .75" />
+        </svg>
     );
 }
 
@@ -165,11 +199,20 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps =
                     background: var(--c-page-body-bg) !important;
                 }
                 .user-profile-page-root .page-header {
+                    display: none;
                     background: transparent !important;
                     backdrop-filter: none !important;
                     -webkit-backdrop-filter: none !important;
                     border-bottom: none !important;
                     z-index: 30;
+                }
+                .user-profile-page-root .page-header-content {
+                    position: relative;
+                }
+                .user-profile-page-root .page-title {
+                    position: absolute;
+                    left: 16px;
+                    text-align: left;
                 }
                 .user-profile-page-root > .page-body {
                     position: absolute;
@@ -180,19 +223,15 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps =
                     padding-top: 0 !important;
                     background: transparent !important;
                 }
-                .user-profile-page-root .page-title {
-                    display: none;
-                }
             `}</style>
-            <PageShell title="" onBack={onClose} className={`user-profile-page-root ${className || ""}`}>
+            <PageShell title="Setting" onBack={onClose} className={`user-profile-page-root ${className || ""}`}>
                 <div className="relative z-[1] w-full max-w-2xl mx-auto flex flex-col pb-8">
                     
                     {/* User Info & Stats Block */}
                     <div className="flex items-center gap-5 px-6 pt-2 pb-4">
                         {/* Avatar */}
                         <div className="relative shrink-0">
-                            <div className="w-[84px] h-[84px] rounded-full overflow-hidden bg-[var(--c-card)] border-2 border-white/50 shadow-sm flex items-center justify-center relative"
-                                 style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}>
+                               <div className="w-[84px] h-[84px] rounded-full overflow-hidden bg-[var(--c-card)] border-2 border-white/50 flex items-center justify-center relative">
                                 {identity?.avatarUrl ? (
                                     <img src={identity.avatarUrl} alt="User Avatar" className="w-full h-full object-cover" />
                                 ) : (
@@ -224,31 +263,29 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps =
                     </div>
 
                     {/* Quick Features Row */}
-                    <div className="mx-4 mb-4 bg-[var(--c-card)] rounded-2xl flex items-center justify-between p-4 px-6"
-                         style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.025)" }}>
-                        <button className="flex flex-col items-center gap-2 flex-1" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowMomentsSettings(true); }}>
-                            <div className="w-[42px] h-[42px] rounded-[14px] bg-[color-mix(in_srgb,var(--c-warning)_15%,transparent)] text-[var(--c-warning)] flex items-center justify-center">
-                                <Radio size={22} strokeWidth={2} />
+                    <div className="mx-4 mb-4 bg-[var(--c-card)] rounded-lg border border-[#e8e8e8] flex items-center justify-between p-2 px-6">
+                        <button className="flex flex-col items-center gap-1 flex-1" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowMomentsSettings(true); }}>
+                            <div className="w-[36px] h-[36px] flex items-center justify-center text-[#777]">
+                                <InstagramIcon />
                             </div>
-                            <span className="ts-12 font-semibold text-[var(--c-text-title)]">朋友圈互动</span>
+                            <span className="ts-12 font-semibold text-[var(--c-text-title)]">Interaction</span>
                         </button>
-                        <button className="flex flex-col items-center gap-2 flex-1" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowStickerManager(true); }}>
-                            <div className="w-[42px] h-[42px] rounded-[14px] bg-[#10b981]/15 text-[#10b981] flex items-center justify-center">
-                                <Sticker size={22} strokeWidth={2} />
+                        <button className="flex flex-col items-center gap-1 flex-1" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowStickerManager(true); }}>
+                            <div className="w-[36px] h-[36px] flex items-center justify-center text-[#777]">
+                                <MoodSmileIcon />
                             </div>
-                            <span className="ts-12 font-semibold text-[var(--c-text-title)]">表情包仓储</span>
+                            <span className="ts-12 font-semibold text-[var(--c-text-title)]">Stickers</span>
                         </button>
-                        <button className="flex flex-col items-center gap-2 flex-1" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowCSSEditor(true); }}>
-                            <div className="w-[42px] h-[42px] rounded-[14px] bg-[color-mix(in_srgb,var(--c-danger)_15%,transparent)] text-[var(--c-danger)] flex items-center justify-center">
-                                <Palette size={22} strokeWidth={2} />
+                        <button className="flex flex-col items-center gap-1 flex-1" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowCSSEditor(true); }}>
+                            <div className="w-[36px] h-[36px] flex items-center justify-center text-[#777]">
+                                <CssFileIcon />
                             </div>
-                            <span className="ts-12 font-semibold text-[var(--c-text-title)]">外观CSS</span>
+                            <span className="ts-12 font-semibold text-[var(--c-text-title)]">CSS</span>
                         </button>
                     </div>
 
                     {/* Standard Settings List */}
-                    <div className="mx-4 bg-[var(--c-card)] rounded-2xl px-4 py-1 flex flex-col"
-                         style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.025)" }}>
+                    <div className="mx-4 bg-[var(--c-card)] rounded-lg border border-[#e8e8e8] px-4 py-1 flex flex-col">
                         <button className="flex items-center gap-3 py-3.5 w-full border-b border-[color-mix(in_srgb,var(--c-card-border)_20%,transparent)]" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowFollowUpEditor(true); }}>
                             <Send size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
                             <div className="flex flex-col flex-1 text-left gap-0.5">
@@ -603,8 +640,8 @@ function InlineMomentsSettings({ onBack }: { onBack: () => void }) {
 
     return (
         <PageShell title="朋友圈互动设置" onBack={onBack} className="absolute inset-0 z-[100]">
-            <div className="page-menu profile-settings-menu">
-                <div className="menu-group">
+            <div className="page-menu profile-settings-menu moments-settings-menu">
+                <div className="menu-group moments-settings-card moments-card-start" data-section="发帖">
                     <ProfileSettingsSliderItem
                         icon={Radio}
                         color={CONTENT_APP_ACCENTS.moments}
@@ -631,7 +668,7 @@ function InlineMomentsSettings({ onBack }: { onBack: () => void }) {
                     />
                 </div>
 
-                <div className="menu-group">
+                <div className="menu-group moments-settings-card moments-card-start" data-section="互动">
                     <ProfileSettingsSliderItem
                         icon={MessageSquare}
                         color={CONTENT_APP_ACCENTS.chat}
@@ -658,7 +695,7 @@ function InlineMomentsSettings({ onBack }: { onBack: () => void }) {
                     />
                 </div>
 
-                <div className="menu-group">
+                <div className="menu-group moments-settings-card moments-card-continuation" data-section="互动">
                     <ProfileSettingsSliderItem
                         icon={MessageSquare}
                         color={BINDING_ACCENTS.api}
@@ -685,7 +722,7 @@ function InlineMomentsSettings({ onBack }: { onBack: () => void }) {
                     />
                 </div>
 
-                <div className="menu-group">
+                <div className="menu-group moments-settings-card moments-card-continuation moments-card-end" data-section="互动">
                     <ProfileSettingsSliderItem
                         icon={Clock}
                         color={CONTENT_APP_ACCENTS.calendar}
@@ -712,7 +749,7 @@ function InlineMomentsSettings({ onBack }: { onBack: () => void }) {
                     />
                 </div>
 
-                <div className="menu-group">
+                <div className="menu-group moments-settings-card moments-card-start moments-card-end" data-section="双语">
                     <div className="menu-item">
                         <ProfileSettingsIcon icon={MessageSquare} color={CONTENT_APP_ACCENTS.moments} />
                         <div className="menu-label-group">
@@ -757,7 +794,7 @@ function InlineMomentsSettings({ onBack }: { onBack: () => void }) {
                     )}
                 </div>
 
-                <div className="menu-group">
+                <div className="menu-group moments-settings-card moments-card-continuation" data-section="发帖">
                     <div className="menu-item" onClick={() => setShowAutoPostList(!showAutoPostList)} style={{ cursor: "pointer" }}>
                         <ProfileSettingsIcon icon={Radio} color={CONTENT_APP_ACCENTS.moments} />
                         <div className="menu-label-group">
@@ -795,7 +832,7 @@ function InlineMomentsSettings({ onBack }: { onBack: () => void }) {
                     )}
                 </div>
 
-                <div className="menu-group">
+                <div className="menu-group moments-settings-card moments-card-continuation moments-card-end" data-section="发帖">
                     <div className="menu-item" onClick={() => setShowCharPicker(!showCharPicker)} style={{ cursor: "pointer" }}>
                         <ProfileSettingsIcon icon={Send} color={CONTENT_APP_ACCENTS.chat} />
                         <div className="menu-label-group">
@@ -828,7 +865,7 @@ function InlineMomentsSettings({ onBack }: { onBack: () => void }) {
                     )}
                 </div>
 
-                <div className="menu-group">
+                <div className="menu-group moments-settings-card moments-card-start moments-card-end" data-section="其他">
                     <button className="menu-item" onClick={() => { setConfig(DEFAULT_MOMENTS_CONFIG); saveMomentsConfig(DEFAULT_MOMENTS_CONFIG); }}>
                         <ProfileSettingsIcon icon={RotateCcw} color={BINDING_ACCENTS.regex} />
                         <div className="menu-label-group"><span className="menu-label menu-label-danger">恢复默认</span></div>
