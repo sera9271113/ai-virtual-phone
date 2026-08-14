@@ -1,0 +1,171 @@
+/* ── Shared keyframes ── */
+
+@keyframes appearanceFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes cardSlideUp {
+  from { opacity: 0; transform: translateY(16px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes sectionTitleSlideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.chat-markdown>* {
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.chat-markdown>*::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes thoughtCardIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes stateBarPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.7; }
+}
+
+/* ── Rich Media Animations ── */
+
+@keyframes redPacketPulse {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.04); }
+}
+
+.red-packet-pulse {
+  animation: redPacketPulse 2s ease-in-out infinite;
+}
+
+@keyframes stickerBounce {
+  0%   { transform: scale(0.3); opacity: 0; }
+  50%  { transform: scale(1.05); }
+  70%  { transform: scale(0.95); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.sticker-bounce {
+  animation: stickerBounce 0.4s ease-out;
+}
+
+/* ── Transition Utilities ── */
+
+.transition-colors {
+  transition: color 0.15s var(--ease-default),
+              background-color 0.15s var(--ease-default),
+              border-color 0.15s var(--ease-default);
+}
+
+.transition-all {
+  transition: all 0.2s ease-in-out;
+}
+
+@keyframes appOpen {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes tabFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.tab-fade-in {
+  animation: tabFadeIn 200ms ease both;
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Voice / Video Call Animations ── */
+
+@keyframes voicecall-pulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes voicecall-avatar-pulse {
+  0%, 100% { box-shadow: 0 0 0 8px rgba(255,255,255,0.15), 0 0 0 16px rgba(255,255,255,0.08); }
+  50% { box-shadow: 0 0 0 12px rgba(255,255,255,0.2), 0 0 0 24px rgba(255,255,255,0.1); }
+}
+
+@keyframes voicecall-mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(76,175,80,0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(76,175,80,0); }
+}
+
+@keyframes voicecall-mic-breathe {
+  0%, 100% { border-color: rgba(255,255,255,0.3); }
+  50% { border-color: rgba(255,255,255,0.6); }
+}
+
+@keyframes voicecall-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.voicecall-subtitle-scroll::-webkit-scrollbar { display: none; }
+.voicecall-subtitle-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.voicecall-controls,
+.voicecall-controls span,
+.voicecall-controls > div { color: #fff !important; }
+.voicecall-controls button svg { stroke: #fff !important; }
+
+/* ── Group Call Animations ── */
+
+@keyframes gcall-wave {
+  0%, 100% { height: 3px; }
+  50%      { height: 12px; }
+}
+
+@keyframes gcall-avatar-glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-success) 40%, transparent); }
+  50%      { box-shadow: 0 0 8px 4px color-mix(in srgb, var(--c-success) 25%, transparent); }
+}
+
+@keyframes gcall-ring-expand {
+  0%   { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@keyframes incoming-call-slide-in {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Desktop Edit Mode (long-press jiggle) ── */
+
+@keyframes jiggle {
+  0%, 100% { transform: rotate(-1.2deg); }
+  50%      { transform: rotate(1.2deg); }
+}
+
+/* ── Accessibility: Reduced Motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .transition-colors,
+  .transition-all {
+    animation: none !important;
+    transition: none !important;
+  }
+  .gcall-wave-bar,
+  .gcall-tile-avatar {
+    animation: none !important;
+  }
+}

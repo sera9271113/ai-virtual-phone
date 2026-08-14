@@ -1,0 +1,1787 @@
+/* ── 角色 App (照片墙与绝密档案) ── */
+
+.char-app {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: transparent;
+  overflow: hidden;
+  position: relative;
+  font-family: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .char-app {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+.char-action-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: var(--c-text-title);
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background 100ms ease;
+  font-family: inherit;
+  font-size: calc(13.5px*var(--app-text-scale,1));
+  font-weight: 600;
+}
+
+.char-action-btn[data-active] {
+  background: var(--c-text-title);
+  color: var(--c-panel);
+  border: none;
+}
+
+/* ── 列表视图（照片墙） ── */
+
+/* 顶部纸胶带基础样式 */
+.char-polaroid-tape-base {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border-left: 1px dashed rgba(0, 0, 0, 0.1);
+  border-right: 1px dashed rgba(0, 0, 0, 0.1);
+  z-index: 2;
+  mix-blend-mode: multiply;
+}
+
+/* 白色纸胶带 */
+.char-polaroid-tape-white {
+  background: rgba(240, 240, 240, 0.9);
+  backdrop-filter: blur(2px);
+}
+
+/* 拍立得卡片 */
+.char-polaroid {
+  cursor: pointer;
+  background: var(--c-polaroid);
+  padding: 6px 6px 32px 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s ease;
+  transform-style: preserve-3d;
+}
+
+/* 绝密便签块 */
+.char-sticky-note {
+  position: absolute;
+  padding: 10px;
+  box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.1);
+  font-family: inherit;
+  font-size: calc(9.9px*var(--app-text-scale,1));
+  color: var(--c-text-title);
+  line-height: 1.4;
+  z-index: 5;
+}
+.char-sticky-note[data-color="yellow"] { background: #fdf5c9; width: 110px; }
+.char-sticky-note[data-color="blue"]   { background: #d4e8ec; width: 120px; }
+
+/* 碎纸片 / 档案纸 */
+.char-paper-scrap {
+  position: absolute;
+  background: var(--c-panel);
+  padding: 8px 12px;
+  box-shadow: 1px 2px 6px rgba(0, 0, 0, 0.08);
+  border: 1px solid #eaeaea;
+  font-family: inherit;
+  font-size: calc(9px*var(--app-text-scale,1));
+  color: var(--c-text);
+  z-index: 4;
+  width: 140px;
+  border-left: 3px solid #b83b3b;
+}
+
+/* 撕裂边缘的笔记本纸 */
+.char-paper-torn {
+  position: absolute;
+  background: var(--c-page-body-bg);
+  padding: 12px;
+  box-shadow: 1px 2px 5px rgba(0, 0, 0, 0.1);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: calc(9.9px*var(--app-text-scale,1));
+  color: var(--c-text-title);
+  z-index: 4;
+  width: 130px;
+  border-top: 1px dashed #ccc;
+  background-image: linear-gradient(#e6ecf1 1px, transparent 1px);
+  background-size: 100% 1.2em;
+}
+
+/* 带有网格背景的调查记录纸 */
+.char-paper-grid {
+  position: absolute;
+  background: var(--c-panel);
+  padding: 10px;
+  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e0e0e0;
+  font-family: inherit;
+  font-size: calc(9px*var(--app-text-scale,1));
+  color: #2b3a4a;
+  z-index: 3;
+  width: 150px;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 10px 10px;
+}
+
+/* A4档案纸样式 (背景用大块纸) */
+.char-paper-a4 {
+  position: absolute;
+  background: var(--c-panel);
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--c-panel-border);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: calc(9px*var(--app-text-scale,1));
+  color: var(--c-text-title);
+  z-index: 2;
+  width: 200px;
+  height: 280px;
+  background-image: repeating-linear-gradient(transparent, transparent 19px, #f0f0f0 19px, #f0f0f0 20px);
+  background-position: 0 40px;
+  overflow: hidden;
+}
+
+/* 红色印章 */
+.char-stamp-red {
+  position: absolute;
+  color: rgba(220, 50, 50, 0.7);
+  border: 3px solid rgba(220, 50, 50, 0.7);
+  font-weight: 800;
+  font-size: calc(14.4px*var(--app-text-scale,1));
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  transform: rotate(-15deg);
+  letter-spacing: 2px;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+/* 黑色涂抹遮挡 (Redacted) */
+.char-redacted {
+  background-color: #1a1a1a;
+  color: transparent !important;
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 2px;
+  margin: 0 2px;
+}
+
+/* 模拟条形码 */
+.char-barcode {
+  display: block;
+  height: 24px;
+  background-image: repeating-linear-gradient(90deg,
+      #000,
+      #000 1px,
+      transparent 1px,
+      transparent 2px,
+      #000 2px,
+      #000 3px,
+      transparent 3px,
+      transparent 5px);
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
+/* 表单复选框 */
+.char-checkbox-list {
+  list-style: none;
+  padding: 0;
+  margin: 5px 0;
+}
+
+.char-checkbox-list li {
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.char-checkbox-box {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--c-input-border);
+  display: inline-block;
+}
+
+.char-checkbox-box.checked {
+  background: var(--c-text-title);
+}
+
+/* 档案顶部 Header */
+.char-paper-header {
+  border-bottom: 2px solid var(--c-input-border);
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+  font-weight: bold;
+  font-size: calc(10.8px*var(--app-text-scale,1));
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* 纸张做旧：中间折痕 */
+.char-paper-crease {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.05) 50%, rgba(255, 255, 255, 0.4) 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* 纸张做旧：烧焦的边缘 (通过不规则阴影和内发光模拟) */
+.char-burnt-edges {
+  box-shadow: inset 0 0 15px rgba(139, 69, 19, 0.4), 0 0 5px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(139, 69, 19, 0.3) !important;
+  border-radius: 2px 4px 1px 3px;
+}
+
+/* 红色马克笔圈画 (手绘感圆形) */
+.char-marker-circle {
+  position: absolute;
+  border: 2px solid #e53935;
+  border-radius: 50% 40% 60% 50% / 50% 60% 40% 50%;
+  /* 不规则椭圆 */
+  width: 120%;
+  height: 140%;
+  top: -20%;
+  left: -10%;
+  pointer-events: none;
+  transform: rotate(-5deg);
+  opacity: 0.8;
+  mix-blend-mode: multiply;
+}
+
+/* 手写批注字体 */
+.char-handwriting {
+  font-family: 'Caveat', 'Bradley Hand', 'Comic Sans MS', cursive;
+  color: #000080;
+  /* 深蓝色圆珠笔墨水 */
+  font-size: calc(12.6px*var(--app-text-scale,1));
+  position: absolute;
+  transform: rotate(-10deg);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.char-handwriting.red-ink {
+  color: #b71c1c;
+  /* 红色批注 */
+  font-weight: 600;
+}
+
+/* 打字机文字小段落 */
+.char-paper-paragraph {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+
+
+.char-polaroid-img-wrapper {
+  background: #f0f0f0;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.char-polaroid-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.char-polaroid-text {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-family: inherit;
+  font-size: calc(10.8px*var(--app-text-scale,1));
+  font-weight: 600;
+  color: var(--c-text-title);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+}
+
+/* ── 飞入与翻转 (Fly & Flip) ── */
+
+.char-flipper-container {
+  pointer-events: none;
+  z-index: 100;
+  perspective: 1200px;
+}
+
+.char-flipper-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+.char-flipper-front,
+.char-flipper-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 4px;
+  background: var(--c-polaroid-back);
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.char-flipper-front {
+  background: var(--c-polaroid);
+}
+
+.char-flipper-front .char-polaroid {
+  width: 100%;
+  height: 100%;
+  padding: 12px 12px 64px 12px;
+  box-shadow: none;
+  border: none;
+  background: var(--c-polaroid);
+}
+
+.char-flipper-back {
+  transform: rotateY(180deg);
+  pointer-events: auto;
+}
+
+/* ── 绝密档案详情页 (Archival Info) ── */
+
+.char-archive-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--c-page-body-bg);
+  color: var(--c-text-title);
+  position: relative;
+}
+
+.char-archive-frame {
+  margin: 12px;
+  border: 1px solid var(--c-panel-border);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  background: var(--c-panel);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.02);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.char-archive-frame::-webkit-scrollbar {
+  display: none;
+}
+
+.char-archive-header {
+  border-bottom: 2px solid var(--c-panel-border);
+  padding: 14px 12px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  background: transparent;
+}
+
+.char-archive-title {
+  font-family: inherit;
+  font-size: calc(18px*var(--app-text-scale,1));
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.char-archive-subtitle {
+  font-size: calc(8.1px*var(--app-text-scale,1));
+  color: var(--c-text);
+  margin-top: 4px;
+  letter-spacing: 0.1em;
+  font-family: inherit;
+}
+
+.char-archive-id {
+  font-family: inherit;
+  font-size: calc(9.9px*var(--app-text-scale,1));
+  font-weight: bold;
+  background: var(--c-text-title);
+  color: var(--c-page-body-bg);
+  padding: 2px 6px;
+}
+
+.char-archive-body {
+  display: flex;
+  flex-direction: row;
+  border-bottom: 1px solid var(--c-panel-border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.char-archive-left {
+  width: 90px;
+  border-right: 1px solid var(--c-panel-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.char-archive-photo {
+  width: 100%;
+  aspect-ratio: 3/4;
+  filter: grayscale(0.2) contrast(1.05);
+  background: var(--c-input);
+  overflow: hidden;
+}
+
+.char-archive-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.char-archive-name-box {
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.char-archive-name-box h2 {
+  margin: 0;
+  font-size: calc(13.5px*var(--app-text-scale,1));
+  font-weight: 800;
+  word-break: break-all;
+  line-height: 1.2;
+}
+
+.char-archive-name-box span {
+  font-size: calc(8.1px*var(--app-text-scale,1));
+  color: var(--c-text);
+  font-family: inherit;
+}
+
+.char-archive-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.char-archive-row {
+  display: flex;
+  border-bottom: 1px solid var(--c-panel-border);
+}
+
+.char-archive-row:last-child {
+  border-bottom: none;
+}
+
+.char-archive-cell {
+  flex: 1;
+  padding: 6px 8px;
+  border-right: 1px dashed var(--c-panel-border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.char-archive-cell:last-child {
+  border-right: none;
+}
+
+.char-archive-label {
+  font-size: calc(7.2px*var(--app-text-scale,1));
+  text-transform: uppercase;
+  color: var(--c-icon);
+  margin-bottom: 2px;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.char-archive-val {
+  font-size: calc(9.9px*var(--app-text-scale,1));
+  font-weight: 600;
+  font-family: inherit;
+  word-break: break-all;
+}
+
+.char-archive-text-section {
+  padding: 14px 12px;
+  border-bottom: 1px dashed var(--c-panel-border);
+  flex-shrink: 0;
+}
+
+/* --- Archive Tags --- */
+.char-archive-tags-container {
+  padding: 0 10px;
+}
+
+.char-archive-tag {
+  display: inline-flex;
+  align-items: center;
+  font-family: inherit;
+  font-size: calc(12.6px*var(--app-text-scale,1));
+  /* Slightly larger, but smaller than Name (15px) */
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--c-danger);
+  /* Faded ink red */
+  border: 1.5px solid var(--c-danger);
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--c-danger) 5%, transparent);
+  /* Slight ink bleed background */
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  position: relative;
+  /* Add a tiny bit of random rotation to look stamped using nth-child in usage or just static here */
+  transform: rotate(-1deg);
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+
+.char-archive-tag:nth-child(even) {
+  transform: rotate(1deg);
+}
+
+.char-archive-tag:nth-child(3n) {
+  transform: rotate(-2deg);
+  border-color: var(--c-icon-active);
+  /* Occasional distinct stamp color (dark slate) */
+  color: var(--c-icon-active);
+  background: color-mix(in srgb, var(--c-icon-active) 5%, transparent);
+}
+
+.char-archive-tag-input {
+  background: color-mix(in srgb, var(--c-input) 50%, transparent);
+  border: 1px dashed #666;
+  font-family: inherit;
+  font-size: calc(11.7px*var(--app-text-scale,1));
+  padding: 4px 6px;
+  color: var(--c-text-title);
+}
+
+.char-archive-tag-input:focus {
+  outline: none;
+  border-color: var(--c-text-title);
+}
+
+.char-timezone-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.char-timezone-trigger {
+  width: 100%;
+  min-height: 30px;
+  background: color-mix(in srgb, var(--c-input) 50%, transparent);
+  border: 1px dashed #666;
+  color: var(--c-text-title);
+  font-family: inherit;
+  font-size: calc(11.7px*var(--app-text-scale,1));
+  line-height: 1.25;
+  padding: 4px 6px;
+  text-align: left;
+  word-break: break-all;
+  cursor: pointer;
+}
+
+.char-timezone-trigger:focus {
+  outline: none;
+  border-color: var(--c-text-title);
+}
+
+.char-timezone-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: max(14px, env(safe-area-inset-top)) 12px 12px;
+  background: color-mix(in srgb, var(--c-page-body-bg) 74%, transparent);
+}
+
+.char-timezone-sheet {
+  width: min(420px, 100%);
+  max-height: min(540px, calc(100dvh - max(28px, env(safe-area-inset-top))));
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--c-panel-border);
+  background: var(--c-panel);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
+
+.char-timezone-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--c-panel-border);
+  color: var(--c-text-title);
+  font-family: inherit;
+  font-size: calc(10.8px*var(--app-text-scale,1));
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.char-timezone-sheet-header button,
+.char-timezone-sheet-actions button {
+  min-height: 34px;
+  border: 1px dashed var(--c-panel-border);
+  background: color-mix(in srgb, var(--c-input) 45%, transparent);
+  color: var(--c-text-title);
+  font-family: inherit;
+  font-size: calc(9px*var(--app-text-scale,1));
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.char-timezone-search {
+  margin: 10px 12px 8px;
+  min-height: 42px;
+  border: 1px dashed #666;
+  background: color-mix(in srgb, var(--c-input) 55%, transparent);
+  color: var(--c-text-title);
+  font-family: inherit;
+  font-size: calc(13.5px*var(--app-text-scale,1));
+  padding: 8px 10px;
+}
+
+.char-timezone-search:focus {
+  outline: none;
+  border-color: var(--c-text-title);
+}
+
+.char-timezone-sheet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 12px 10px;
+}
+
+.char-timezone-options {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 12px 12px;
+  border: 1px dashed var(--c-panel-border);
+  background: color-mix(in srgb, var(--c-panel) 94%, var(--c-input));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-input) 35%, transparent);
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+
+.char-timezone-option {
+  width: 100%;
+  min-height: 30px;
+  display: block;
+  padding: 6px;
+  border: 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--c-panel-border) 72%, transparent);
+  background: transparent;
+  color: var(--c-text-title);
+  font-family: inherit;
+  font-size: calc(10.8px*var(--app-text-scale,1));
+  line-height: 1.25;
+  text-align: left;
+  word-break: break-all;
+  cursor: pointer;
+}
+
+.char-timezone-option:last-child {
+  border-bottom: 0;
+}
+
+.char-timezone-option:hover,
+.char-timezone-option:focus,
+.char-timezone-option[aria-selected="true"] {
+  outline: none;
+  background: color-mix(in srgb, var(--c-icon-active) 11%, transparent);
+}
+
+.char-timezone-more,
+.char-timezone-empty {
+  padding: 7px 6px;
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: calc(9.5px*var(--app-text-scale,1));
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* --- Separated Logs (Alternate Greetings) --- */
+.char-log-entry {
+  position: relative;
+}
+
+.char-log-entry-header {
+  font-family: inherit;
+  font-size: calc(9.9px*var(--app-text-scale,1));
+  font-weight: bold;
+  display: inline-block;
+  background: var(--c-text-title);
+  color: var(--c-page-body-bg);
+  padding: 2px 6px;
+  margin-bottom: 8px;
+}
+
+.char-log-entry-alt .char-log-entry-header {
+  background: var(--c-text);
+  /* Slightly lighter for supplementary logs */
+}
+
+/* --- Text contents --- */
+.char-archive-p {
+  font-size: calc(10.8px*var(--app-text-scale,1));
+  line-height: 1.6;
+  font-family: inherit;
+  white-space: pre-wrap;
+  margin: 0;
+  color: var(--c-text-title);
+}
+
+.char-archive-actions {
+  display: flex;
+  padding: 12px;
+  gap: 8px;
+  background: var(--c-input);
+  margin-top: auto;
+}
+
+.char-archive-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  height: 38px;
+  border: 1px solid var(--c-text-title);
+  background: transparent;
+  color: var(--c-text-title);
+  font-family: "Courier New", monospace, inherit;
+  font-size: calc(10.8px*var(--app-text-scale,1));
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 4px;
+}
+
+.char-archive-btn-danger {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+
+.char-archive-stamp {
+  position: absolute;
+  top: 50px;
+  right: 10px;
+  color: var(--c-danger);
+  border: 2px solid var(--c-danger);
+  padding: 2px 8px;
+  font-family: inherit;
+  font-size: calc(12.6px*var(--app-text-scale,1));
+  font-weight: bold;
+  transform: rotate(15deg);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.char-bottom-bar {
+  flex-shrink: 0;
+  padding: 10px 16px 16px;
+  position: relative;
+  z-index: 100;
+  background: var(--c-page-body-bg);
+}
+
+.wt-bottom-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: transparent;
+  padding: 0;
+  border-radius: 100px;
+  margin: 0 auto;
+  border: none;
+  max-width: 100%;
+}
+
+.wt-bottom-pill-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 38px;
+  padding: 0 16px;
+  border: none;
+  background: #111214;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: calc(11.5px * var(--app-text-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 100px;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  white-space: nowrap;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 12px 32px rgba(40, 42, 46, 0.16), 0 2px 8px rgba(40, 42, 46, 0.08);
+}
+
+.wt-bottom-pill-btn:focus,
+.wt-bottom-pill-btn:focus-visible {
+  outline: none;
+}
+
+.wt-bottom-pill-btn:hover {
+  background: #000000;
+  color: #ffffff;
+}
+
+.wt-bottom-pill-btn:active {
+  transform: scale(0.96);
+}
+
+.wt-bottom-pill-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.wt-bottom-pill-active {
+  background: #ffffff !important;
+  color: #4b4e54 !important;
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+}
+
+.char-confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 2;
+  background: #fdf0f0;
+  border-radius: 4px;
+  padding: 0 8px;
+  min-height: 38px;
+  border: 1px solid #c44;
+}
+
+.char-confirm-text {
+  font-size: calc(10.8px*var(--app-text-scale,1));
+  color: #c44;
+  flex: 1;
+  font-weight: bold;
+}
+
+.char-confirm-yes,
+.char-confirm-no {
+  border: none;
+  border-radius: 2px;
+  padding: 4px 10px;
+  font-size: calc(10.8px*var(--app-text-scale,1));
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.char-confirm-yes {
+  background: #c44;
+  color: #fff;
+}
+
+.char-confirm-no {
+  background: transparent;
+  color: var(--c-text);
+}
+
+/* ═══ 世界文件夹 tab 条（World case-file tabs） ═══ */
+
+.wt-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 20px;
+  margin-bottom: -12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  flex-shrink: 0;
+  border-bottom: none;
+  background: transparent;
+}
+.wt-strip::-webkit-scrollbar { display: none; }
+
+.wt-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 150px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 100px;
+  background: rgba(0, 0, 0, 0.04);
+  color: #777777;
+  font-family: inherit;
+  font-size: calc(13px * var(--app-text-scale, 1));
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.wt-tab:not(.wt-tab-active):hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.wt-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 84px;
+}
+
+.wt-tab-count {
+  font-family: inherit;
+  font-size: calc(10.5px * var(--app-text-scale, 1));
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 100px;
+  background: #ffffff;
+  color: #1a1a1a;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.wt-tab-edit {
+  font-size: calc(11.5px * var(--app-text-scale, 1));
+  opacity: 0.6;
+}
+
+.wt-tab-active {
+  background: #4b4e54;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(40, 42, 46, 0.15);
+}
+
+.wt-tab-active .wt-tab-edit {
+  opacity: 0.8;
+}
+
+/* 拖拍立得悬停在 tab 上：高亮，表示「松手归档进这份文件夹」 */
+.wt-tab-drop {
+  background: #5a5d63;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(40, 42, 46, 0.2);
+}
+
+.wt-tab-new {
+  min-width: 34px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+  align-items: center;
+  font-weight: 300;
+  font-size: calc(24px * var(--app-text-scale, 1));
+  color: #888888;
+  background: transparent;
+  border-radius: 50%;
+  border: none;
+  line-height: 1;
+}
+
+.wt-tab-new:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #111111;
+}
+
+/* ═══ 纸片风弹窗（文件夹编辑 / 新建 / 拉线 / 关系细目共用） ═══ */
+
+.wt-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 9999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  background: rgba(30, 24, 14, 0.45);
+}
+
+.wt-paper {
+  position: relative;
+  width: 100%;
+  max-width: 330px;
+  max-height: 78%;
+  overflow-y: auto;
+  padding: 20px 16px 14px;
+  border-radius: 22px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.wt-paper-tape {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 42px;
+  height: 13px;
+  margin-left: -21px;
+  border-radius: 1px;
+  background: #f8f8f8;
+  border: 1px solid #eaeaea;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transform: rotate(-1.5deg);
+}
+
+.wt-paper-kicker {
+  font-family: "Courier New", monospace;
+  font-size: calc(12px * var(--app-text-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #111111;
+  margin-bottom: 10px;
+}
+
+.wt-paper-label {
+  display: block;
+  font-size: calc(11.5px * var(--app-text-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #555555;
+  margin: 10px 0 5px;
+}
+
+.wt-paper-input,
+.wt-paper-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #f0f0f0;
+  color: #111111;
+  font-family: inherit;
+  font-size: calc(13px * var(--app-text-scale, 1));
+  line-height: 1.5;
+  outline: none;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.wt-paper-input:focus,
+.wt-paper-textarea:focus {
+  background: #ffffff;
+  box-shadow: 0 0 0 2px #dddddd;
+}
+.wt-paper-input:disabled { opacity: 0.55; }
+.wt-paper-textarea { min-height: 110px; resize: vertical; }
+
+.wt-paper-hint {
+  margin: 7px 0 0;
+  font-size: calc(11px * var(--app-text-scale, 1));
+  line-height: 1.5;
+  color: #888888;
+}
+
+.wt-paper-confirm {
+  font-size: calc(11.5px * var(--app-text-scale, 1));
+  color: #d32f2f;
+}
+
+.wt-paper-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.wt-paper-spacer { flex: 1; }
+
+.wt-btn {
+  padding: 6px 14px;
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #333333;
+  font-family: inherit;
+  font-size: calc(12.5px * var(--app-text-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.wt-btn:not(:disabled):hover {
+  background: #f5f5f5;
+}
+.wt-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.wt-btn-primary { background: #111214; border-color: #111214; color: #ffffff; }
+.wt-btn-primary:not(:disabled):hover { background: #000000; border-color: #000000; }
+.wt-btn-done { background: #111214; border-color: #111214; color: #ffffff; }
+.wt-btn-done:not(:disabled):hover { background: #000000; border-color: #000000; }
+.wt-btn-danger { background: #ffffff; border-color: #d32f2f; color: #d32f2f; }
+.wt-btn-danger:not(:disabled):hover { background: #fff5f5; }
+.wt-btn-small { padding: 3px 9px; font-size: calc(11px * var(--app-text-scale, 1)); }
+
+/* ═══ 拉线交互 ═══ */
+
+.wt-relation-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: calc(13px * var(--app-text-scale, 1));
+  color: #333333;
+  margin-bottom: 8px;
+}
+.wt-relation-dash { color: #888888; font-size: calc(11.5px * var(--app-text-scale, 1)); }
+
+.wt-relation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.wt-relation-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f0f0f0;
+}
+.wt-relation-text {
+  flex: 1;
+  font-size: calc(12.5px * var(--app-text-scale, 1));
+  line-height: 1.45;
+  color: #222222;
+}
+
+.wt-relation-overview-title {
+  margin: -4px 0 10px;
+  font-size: calc(14px * var(--app-text-scale, 1));
+  font-weight: 700;
+  color: #222222;
+}
+
+/* 关系总览列表：整行可点（进入这对角色的关系详情），复用 .wt-relation-item
+   同款深灰胶囊底色，与 RelationPairSheet 里的行保持同一种「胶囊」质感 */
+.wt-relation-text-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wt-relation-item-labels {
+  display: block;
+  margin-top: 3px;
+  font-size: calc(11px * var(--app-text-scale, 1));
+  font-weight: 400;
+  color: rgba(40, 42, 46, 0.6);
+}
+
+/* 添加新关系：两个下拉分开一些，中间摆一个链接图标，而不是紧挨在一起 */
+.wt-relation-add-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+.wt-relation-add-row .wt-paper-input {
+  flex: 1;
+  min-width: 0;
+}
+.wt-relation-add-link {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  color: #888888;
+}
+.wt-relation-add-link svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 拉线提示条：贴在 tab 条下方的一张纸条 */
+.wt-link-hint {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-0.6deg);
+  z-index: 20;
+  max-width: 86%;
+  padding: 6px 14px;
+  border-radius: 4px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-size: calc(11.5px * var(--app-text-scale, 1));
+  color: #555555;
+  text-align: center;
+  pointer-events: none;
+}
+.wt-link-hint strong { color: #111111; }
+
+/* 拉线起点：拍立得上插一枚「黑图钉」光晕 */
+.wt-link-source {
+  outline: 2px solid rgba(0, 0, 0, 0.5);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+.wt-link-source::after {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #888888, #2b2b2b 60%);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.35);
+  z-index: 5;
+}
+
+/* 关系标签在编辑模式下可点（剪断关系） */
+.wt-line-label-editable { cursor: pointer; }
+
+/* ══════════════════════════════════════════════════════════
+   ── 色轮取色器 (.cwp-*) ──
+   实施顺序 step 2：角色卡片色 (cardColor) 与世界文件夹色 (color)
+   两处复用同一个控件，本身不含业务逻辑。
+   不再提供快捷预设色板——颜色完全交给色轮 + 输入框；十六进制输入框
+   放在色块预览下方（同一列），而不是单独一行。
+   ══════════════════════════════════════════════════════════ */
+
+.cwp-root {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 2px;
+}
+
+.cwp-wheel-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cwp-wheel {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  cursor: crosshair;
+  box-shadow: none;
+  touch-action: none;
+  user-select: none;
+}
+
+.cwp-knob {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  margin-top: -6px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 1px 3px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+/* 预览色块 + 十六进制输入框的竖排一列，挨着色轮右侧 */
+.cwp-preview-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cwp-preview {
+  width: 100%;
+  height: 38px;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.15),
+    inset 0 1px 2px rgba(255, 255, 255, 0.25);
+}
+
+.cwp-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cwp-slider-label {
+  font-size: calc(11px * var(--app-text-scale, 1));
+  opacity: 0.65;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.cwp-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 10px;
+  border-radius: 5px;
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+.cwp-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #333;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.cwp-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #333;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.cwp-hex-input {
+  width: 100%;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: calc(11px * var(--app-text-scale, 1));
+  padding: 5px 8px;
+  border: 1px dashed #999;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  text-transform: lowercase;
+}
+.cwp-hex-input:focus { outline: none; border-color: #666; }
+
+/* ══════════════════════════════════════════════════════════
+   ── 角色卡片 (.ccf-*) ──
+   配色：深灰 / 淡灰 / 白，不用黑色。卡片是轻微透明的平面卡片，
+   不做毛玻璃模糊；圆角收小，质感更克制。
+   ══════════════════════════════════════════════════════════ */
+
+/* 灰底静态测试台：用于摆放 .ccf-card 调质感，与最终 CharacterCarousel
+   背景色一致（淡灰），方便直接对比效果 */
+.ccf-stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 22px;
+  padding: 32px;
+  background: #ffffff;
+  border-radius: 12px;
+  min-height: 200px;
+}
+
+.ccf-stage-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 160px;
+  color: rgba(40, 42, 46, 0.4);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+/* 不再做独立灰色底板：轮播 + 世界文件夹条直接坐在页面的白色大背景上，
+   页面顶栏（标题/返回/＋）保持在这块区域之外，走深灰顶栏配色 */
+.ccf-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: transparent;
+  border-radius: 0;
+  margin: 0;
+  overflow: visible;
+  position: relative;
+  /* 独立建立层叠上下文，配合下面 ::before 的 z-index: -1，
+     保证白色渐变只会沉到本面板内部所有内容的最底下，
+     不会跑去影响面板之外的层叠顺序 */
+  isolation: isolate;
+}
+/* 背景装饰：左上角、右下角各一团柔和的白色渐变光晕，纯视觉点缀，
+   不接收任何交互、不占布局空间，且始终在本面板所有内容的最底层 */
+.ccf-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* 就两个点，中间拉长——两点之间本身就是纯线性插值，没有任何拐点，
+     不需要堆节点。过渡区间从 20% 拉到 85%，跨度够大，看起来自然是
+     因为「距离长」，不是因为「点多」。 */
+  background:
+    radial-gradient(ellipse 70% 45% at 100% 100%, rgba(255, 255, 255, 0.9), transparent 62%),
+    linear-gradient(180deg, transparent 15%, rgba(255, 255, 255, 1) 68%);
+}
+
+/* 文件夹区域：改成 flex: 0 0 auto——按标题+文件夹行自身内容的高度来，
+   不再用 flex-grow 去撑满份额。之前用 2.4 份增长时，只要内容没占满
+   分到的高度，底部就会多出一截看不见的空白，导致「文件夹到底栏」的
+   间距比「文件夹到上方文字」的间距大一截、且不可控。改成 auto 高度后，
+   这块区域会紧贴着自己的内容，下面的间距完全由 .wtf-strip 的
+   padding-bottom + .ccf-dock-bar 的 padding-top 决定，可以和上面的
+   间距对齐。轮播区的 flex: 5 1 0% 现在是唯一会增长的项，自动吃掉
+   剩余的全部空间，不用再改。 */
+.wtf-section {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 标题行：左标题 + 右侧图标按钮 */
+.ccf-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 16px 6px;
+  position: relative;
+  z-index: 10;
+}
+.ccf-section-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1a1a1a;
+  letter-spacing: -0.01em;
+}
+.ccf-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ccf-header-icon-btn {
+  background: none;
+  border: none;
+  padding: 6px;
+  color: rgba(60, 62, 66, 0.55);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
+}
+.ccf-header-icon-btn:hover {
+  color: rgba(40, 42, 46, 0.85);
+  background: rgba(0,0,0,0.04);
+}
+.ccf-header-icon-btn:active {
+  transform: scale(0.92);
+}
+.ccf-header-icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* 卡片本体：封面图为主体，底部磨砂区域放编号+菜单+名字 */
+.ccf-card {
+  --ccf-color: #ffffff;
+  position: relative;
+  width: 200px;
+  height: 280px;
+  flex: 0 0 auto;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  background: color-mix(in srgb, var(--ccf-color) 20%, #f0f0f0 80%);
+  border: none;
+  box-shadow: 0 4px 16px rgba(40, 42, 46, 0.10);
+  transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.22s ease;
+}
+
+.ccf-card:active {
+  transform: scale(0.97);
+}
+
+.ccf-card.ccf-card-selected {
+  box-shadow: 0 8px 24px rgba(40, 42, 46, 0.16);
+}
+
+/* 封面头像：占卡片主体上部 */
+.ccf-cover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 80px;
+  overflow: hidden;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--ccf-color) 40%, #eee 60%), color-mix(in srgb, var(--ccf-color) 20%, #ddd 80%));
+}
+.ccf-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ccf-cover-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 56px;
+  font-weight: 700;
+  color: rgba(40, 42, 46, 0.25);
+}
+
+/* 底部磨砂区域 */
+.ccf-bottom-frost {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 80px;
+  padding: 8px 16px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* 编号 + 菜单行 */
+.ccf-bottom-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ccf-no-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(60, 62, 66, 0.45);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+.ccf-menu-icon {
+  background: none;
+  border: none;
+  padding: 2px;
+  color: rgba(60, 62, 66, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ccf-menu-icon svg {
+  width: 14px;
+  height: 14px;
+}
+.ccf-menu-icon:hover {
+  color: rgba(40, 42, 46, 0.7);
+}
+
+/* 角色名字 */
+.ccf-card-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ── CharacterCarousel 轮播 (.ccf-carousel-*) ──
+   坐在白色大背景上；切换卡片时用带一点回弹的缓动曲线，
+   让居中/切换更有轮播的动感，而不是生硬的线性滑动。
+   ══════════════════════════════════════════════════════════ */
+
+.ccf-carousel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 5 1 0%;
+  background: transparent;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+}
+
+.ccf-carousel-scroll {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 20px;
+  /* overflow-x: auto 会把 overflow-y 也连带计算成 auto（同一 wtf-strip 的问题），
+     裁切边界正好卡在内容高度上。原先 8px/8px 的上下 padding 装不下 .ccf-card
+     的外阴影（普通态 0 4px 16px、选中态 0 8px 24px），阴影下半截总被削掉一块，
+     所以上下各留出足够阴影延展的空间：选中态阴影下缘约 8+24=32px，
+     上缘约 24-8=16px，取整加一点余量。 */
+  padding: 20px 20px 32px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.ccf-carousel-scroll::-webkit-scrollbar { display: none; }
+
+.ccf-carousel-item {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ── 底部装饰栏 (.ccf-dock-*) ──
+   纯视觉点缀，坐在世界文件夹条下方；毛玻璃材质，延伸到屏幕
+   左右两侧边缘（.ccf-panel 本身不设左右 padding，子元素宽度
+   100% 即可自然贴边）。三个图标等距排布，灰色，无独立容器/背景。
+   ══════════════════════════════════════════════════════════ */
+.ccf-dock-bar {
+  /* 之前用绝对定位贴底，赌的是「文件夹区底部原本就空出来的那块留白」——
+     但轮播区(flex:5)和文件夹区(flex:4)本来就把 .ccf-panel 的可用高度
+     瓜分完了，根本没有稳定的留白可赌，真机上一遇到高度紧张（角色名换行、
+     屏幕偏矮等）底栏就会被挤到 .char-app 的 overflow: hidden 裁切线以下，
+     完全不可见。
+     现在改回 flex 正常流的子项，但用 flex: 0 0 auto——即「按自身内容
+     算出固定高度，不参与增长/收缩」。这样浏览器排布时会先扣掉 header
+     和这条底栏所需的高度，剩下的空间才按比例分给轮播和文件夹区，
+     底栏永远有确定的一块地方，不再可能被裁没。
+     为了不占太多地方，padding 和图标尺寸都比之前小一圈；对应地
+     .wtf-section 的 flex 份额从 4 收窄到 3.2，只压缩文件夹区，
+     轮播区(flex:5)不动。 */
+  position: relative;
+  flex: 0 0 auto;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  /* padding 和图标（见下方 .ccf-dock-icon svg）一起放大，整体高度约为
+     之前（10/20/8）的 1.5 倍 */
+  padding: 17px 24px calc(15px + env(safe-area-inset-bottom, 0px));
+  /* 玻璃反光感：不再是一块死白，叠两层渐变——
+     一层是左上角放大的椭圆径向高光，模拟玻璃表面的反光光斑，范围
+     拉大到能被看清楚，而不是缩在一个角落里一点点；另一层是从上到下
+     的线性渐变，顶部亮、往下逐渐变淡，模拟光从上方打在玻璃上的高光。
+     再配一条顶部内嵌高光线（inset box-shadow），把玻璃边缘照亮，
+     整体反光感会比原来单纯的半透明白色明显很多。 */
+  /* 整个面板的「上面原色、下面渐变到白」已经交给 .ccf-panel::before
+     那条大渐变去做了（见上方），底栏自己不用再单独叠一层渐变，
+     保持一块柔和的半透明白+毛玻璃质感就行 */
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(24px) saturate(1.9);
+  -webkit-backdrop-filter: blur(24px) saturate(1.9);
+  border-top: 1px solid rgba(255, 255, 255, 0.85);
+  /* 只圆上边两个角，底栏本身贴着屏幕/面板底边，下边两角不需要圆角 */
+  border-radius: 18px 18px 0 0;
+  /* 阴影保持之前调浅后的量；再加一条顶部内嵌高光（inset），
+     强化玻璃边缘被照亮的感觉 */
+  box-shadow:
+    0 -3px 12px rgba(40, 42, 46, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.ccf-dock-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(60, 62, 66, 0.4);
+}
+.ccf-dock-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.ccf-carousel-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(40, 42, 46, 0.4);
+  font-size: 15px;
+  font-family: inherit;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ── 「添加角色」轨道菜单 (.ccf-orbit-*) ──
+   触发按钮不再放在白色顶栏，而是灰色底板（.ccf-panel）右上角，
+   这样展开时不会跑回顶栏、也不会盖住页面标题/返回按钮。
+   点击后沿一段四分之一圆弧（以触发按钮为圆心，从正左方 180° 扫到
+   正下方 270°，即触发按钮左下方的一段圆弧）展开 3 个圆形按钮，
+   像行星轨道一样错落分布。按钮本体以 fixed 定位渲染在页面最上层，
+   避免被任何容器的 overflow 裁剪。
+   ══════════════════════════════════════════════════════════ */
+
+/* 轮播容器 wrap：不再需要大量 padding-top */
+.ccf-carousel-wrap {
+  padding-top: 0;
+}
+
+/* 点击空白收起展开的新建按钮——不再 fixed 全屏，改为绝对定位在 ccf-panel 内，
+   z-index 低于 section-header 以免挡住展开的按钮 */
+.ccf-orbit-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: transparent;
+  cursor: default;
+}
