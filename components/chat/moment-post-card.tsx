@@ -41,7 +41,6 @@ export function MomentPostCard({ post, onUpdate, onRequestDelete, onOpenCommentC
     const [photoPromptDraft, setPhotoPromptDraft] = useState("");
     const [photoRegenerating, setPhotoRegenerating] = useState(false);
     const [photoRetryError, setPhotoRetryError] = useState("");
-    const [showPostActions, setShowPostActions] = useState(false);
     const [editingPostOpen, setEditingPostOpen] = useState(false);
     const [postContentDraft, setPostContentDraft] = useState("");
     const [postPhotoDescDraft, setPostPhotoDescDraft] = useState("");
@@ -261,43 +260,9 @@ export function MomentPostCard({ post, onUpdate, onRequestDelete, onOpenCommentC
                 <div className="feed-post-author flex-1 flex items-center gap-1">
                     <span className="feed-post-author-name ts-16 font-medium text-[var(--c-text-title)]">{authorName}</span>
                 </div>
-                <button
-                    className="feed-post-more-btn p-1 text-[var(--c-icon)] opacity-70"
-                    type="button"
-                    aria-label="更多操作"
-                    title="更多操作"
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        setShowPostActions(prev => !prev);
-                    }}
-                >
+                <span className="feed-post-more-btn p-1 text-[var(--c-icon)] opacity-70" aria-hidden="true">
                     <MoreHorizontal size={18} strokeWidth={1.75} />
-                </button>
-                {showPostActions && typeof document !== "undefined" && createPortal(
-                    <div className="fixed inset-0 z-[11]" onClick={() => setShowPostActions(false)} />,
-                    document.body,
-                )}
-                {showPostActions && (
-                    <div className="feed-post-action-menu" onClick={event => event.stopPropagation()}>
-                        <button type="button" onClick={openPostEditor}>
-                            <Pencil size={14} strokeWidth={1.75} />
-                            <span>编辑动态</span>
-                        </button>
-                        {onRequestDelete && (
-                            <button
-                                type="button"
-                                data-danger="true"
-                                onClick={() => {
-                                    setShowPostActions(false);
-                                    handleDelete();
-                                }}
-                            >
-                                <Trash2 size={14} strokeWidth={1.75} />
-                                <span>删除动态</span>
-                            </button>
-                        )}
-                    </div>
-                )}
+                </span>
             </div>
 
             {/* Text content */}

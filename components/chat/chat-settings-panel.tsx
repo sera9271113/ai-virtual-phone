@@ -1507,6 +1507,7 @@ export function ChatSettingsPanel({
                                     onChange={checked => {
                                         setIsBlacklisted(checked);
                                         updateSession({ isBlacklisted: checked });
+                                        window.dispatchEvent(new CustomEvent("chat-session-blacklist-updated", { detail: { sessionId: session.id, isBlacklisted: checked } }));
                                         if (checked) cancelFollowUp(session.id);
                                     }}
                                 />

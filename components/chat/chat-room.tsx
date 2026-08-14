@@ -55,6 +55,7 @@ import { kvGet, kvSet, kvRemove } from "@/lib/kv-db";
 import { activateFamilyCard, creditWalletBalance, deleteFamilyCard, loadWalletState, payWithWalletBalance } from "@/lib/wallet-storage";
 import { loadDeliveredShoppingGifts, type ShoppingGiftCandidate } from "@/lib/shopping-gift-utils";
 import { settleShoppingPaymentRequest } from "@/lib/shopping-payment-request";
+import { loadMessageEntries, pushMessageEntry } from "@/lib/message-storage";
 import type { RegexConfig } from "@/lib/settings-types";
 import { MacroEngine } from "@/lib/macro-engine";
 import {
@@ -2423,6 +2424,11 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
         return stripEditableToolTags(cleanText);
     };
 
+    const isCurrentSessionBlacklisted = () => {
+        if (session.isGroup) return false;
+        return loadChatSessions().find(item => item.id === session.id)?.isBlacklisted === true;
+    };
+
     const hasKnownGroupSenderPrefix = (text: string) => {
         return groupCharacters.some((groupCharacter) => {
             const escapedName = groupCharacter.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -2506,6 +2512,7 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
         options?: { promptHidden?: boolean } & GenerationRunGuard,
     ): Promise<{ hasVisible: boolean; stateValues: StateValue[]; triggerCall?: "voice" | "video"; hasDecline?: boolean }> => {
         throwIfGenerationStopped(options);
+        if (isCurrentSessionBlacklisted()) return { hasVisible: false, stateValues: [] };
         const responseBatchId = createResponseBatchId();
         const previousState = session.isGroup
             ? getLatestStateValues(session.id)
@@ -2567,7 +2574,7 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
 
         if (filteredParts.length === 0) {
             // Silence: only status panel / inner monologue, no visible chat text
-            if (statusPanel || innerMonologue) {
+            if ((statusPanel || innerMonologue) && !isCurrentSessionBlacklisted()) {
                 throwIfGenerationStopped(options);
                 const aiMsg = pushChatMessage({
                     sessionId: session.id,
@@ -2659,6 +2666,10 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
 
         const publishVisibleMessage = (entry: { draft: AssistantMessageDraft; afterPublish?: (message: ChatMessage) => void }): ChatMessage => {
             throwIfGenerationStopped(options);
+            if (isCurrentSessionBlacklisted()) {
+                options?.isActive && options.isActive();
+                throw new DOMException("WeChat reply blocked by blacklist", "AbortError");
+            }
             const msg = pushChatMessage(entry.draft);
             setMessages(prev => [...prev, msg]);
             dispatchVisibleNotice(msg);
@@ -3162,6 +3173,44 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
 
     const triggerAIResponse = async () => {
         if (isGeneratingRef.current) return;
+        if (!session.isGroup && isCurrentSessionBlacklisted()) {
+            const messageHistory = loadMessageEntries(session.contactId);
+            const messageUserName = resolveUserIdentity(session.contactId, "message")?.name || userIdentity?.name || "用户";
+            const messageContext: ChatMessage = {
+                id: `message-blacklist-context-${session.id}`,
+                sessionId: session.id,
+                role: "system",
+                content: `系统状态：当前渠道是 Message 短信。${messageUserName}已将你在微信 Chat 中拉黑，因此你不能在微信中回复；你仍可以通过 Message 联系${messageUserName}。你是${character?.name || "角色"}，对方是${messageUserName}。请记住这个渠道边界，并自然回应自己被拉黑这件事。`,
+                status: "sent",
+                createdAt: new Date().toISOString(),
+            };
+            try {
+                const result = await generateChatCompletion(
+                    session,
+                    [messageContext, ...messageHistory.map(entry => ({
+                        id: entry.id,
+                        sessionId: session.id,
+                        role: entry.role,
+                        content: entry.content,
+                        status: "sent" as const,
+                        createdAt: entry.createdAt,
+                    }))],
+                    { appTags: ["chat", "text", "message"], excludeMessageEntries: true },
+                );
+                const reply = parseAIResponse(flattenCompletionResult(result), []).parts
+                    .filter(part => !part.mediaType && part.content.trim())
+                    .map(part => part.content.trim())
+                    .join("\n\n")
+                    .trim();
+                if (reply) {
+                    pushMessageEntry({ characterId: session.contactId, role: "assistant", content: reply });
+                    window.dispatchEvent(new CustomEvent("message-thread-updated", { detail: { characterId: session.contactId } }));
+                }
+            } catch (error) {
+                console.error("[Message] Blacklist reply failed:", error);
+            }
+            return;
+        }
         const generationRun = createGenerationRun(session.id);
         const generationRunId = generationRun.runId;
         const isCurrentGeneration = () => isGenerationRunActive(session.id, generationRunId);

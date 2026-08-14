@@ -49,6 +49,17 @@ export function pushMessageEntry(input: Omit<MessageEntry, "id" | "createdAt">):
     return entry;
 }
 
+export function updateMessageEntry(characterId: string, entryId: string, content: string): MessageEntry | null {
+    const store = loadStore();
+    const entries = store[characterId] || [];
+    const index = entries.findIndex(entry => entry.id === entryId);
+    if (index < 0) return null;
+    const updated = { ...entries[index], content };
+    store[characterId] = entries.map((entry, entryIndex) => entryIndex === index ? updated : entry);
+    saveStore(store);
+    return updated;
+}
+
 export function deleteMessageEntry(characterId: string, entryId: string): void {
     const store = loadStore();
     const entries = store[characterId] || [];

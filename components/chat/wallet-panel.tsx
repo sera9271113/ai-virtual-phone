@@ -174,7 +174,7 @@ export function WalletPanel({ onBack }: WalletPanelProps = {}) {
   );
   const walletBalance = useMemo(() => getWalletBalance(wallet), [wallet]);
   const recentTransactions = useMemo(
-    () => wallet.transactions.slice(0, 60),
+    () => wallet.transactions.slice(0, 10),
     [wallet.transactions],
   );
 

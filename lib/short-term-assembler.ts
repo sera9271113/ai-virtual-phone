@@ -51,7 +51,7 @@ function formatPhotoDirectiveForPrompt(msg: ChatMessage): string {
 
 export type NativeTimelineEntry = {
     id: string;
-    sourceApp: "chat" | "moments" | "story" | "vn" | "map" | "game" | "diary" | "xiaohongshu" | "interview_magazine" | "cocreate" | "checkphone" | "custom_app";
+    sourceApp: "chat" | "message" | "moments" | "story" | "vn" | "map" | "game" | "diary" | "xiaohongshu" | "interview_magazine" | "cocreate" | "checkphone" | "custom_app";
     sourceDetail?: "direct" | "message" | "group" | "system" | "story" | "chat_offline" | "game" | "diary_entry" | "notewall" | "xiaohongshu" | "black_market_theater" | "interview_issue" | "interview_shared_issue" | "cocreate_project" | "checkphone" | "custom_app_event"; // chat sub-type: 1:1 vs Message vs group chat vs system note
     authorType?: "user" | "character" | "npc"; // who authored this entry
     postAuthorType?: "user" | "character"; // for moments: who owns the parent post
@@ -410,7 +410,7 @@ export function loadNativeTimeline(
         if (!content) continue;
         entries.push({
             id: `message:${message.id}`,
-            sourceApp: "chat",
+            sourceApp: "message",
             sourceDetail: "message",
             timestamp: message.createdAt,
             content: `${label} ${sender}: ${content}`,
@@ -831,6 +831,7 @@ const FEATURE_ORDER: Record<string, number> = { map: 0, game: 0.5, moments: 1, x
 // Map appId → XML tag name for the "current feature" wrapper
 const FEATURE_TAG: Record<string, string> = {
     chat: "recent_chat",
+    message: "recent_message",
     group_chat: "recent_group_chat",
     moments: "recent_moments",
     story: "recent_events",
@@ -1067,9 +1068,9 @@ export function prepareShortTermContext(
     }
 
     if (!options?.excludeMessageEntries) {
-        const messageEntries = timeline.filter(e => e.sourceApp === "chat" && e.sourceDetail === "message");
+        const messageEntries = timeline.filter(e => e.sourceApp === "message" && e.sourceDetail === "message");
         if (messageEntries.length > 0) {
-            raw.push({ tag: "recent_chat", order: FEATURE_ORDER.chat, entries: messageEntries });
+            raw.push({ tag: "recent_message", order: FEATURE_ORDER.chat, entries: messageEntries });
         }
     }
 
@@ -1409,7 +1410,8 @@ export function prepareGroupShortTermContext(
                                                         entry.sourceApp === "story" && entry.sourceDetail === "black_market_theater" ? "recent_theater" :
                                                             entry.sourceApp === "diary" && entry.sourceDetail === "diary_entry" ? "recent_diary" :
                                                                 entry.sourceApp === "diary" && entry.sourceDetail === "notewall" ? "recent_notewall" :
-                                                                    entry.sourceApp === "chat" ? "recent_chat" : "recent_events"
+                                                                    entry.sourceApp === "message" ? "recent_message" :
+                                                                        entry.sourceApp === "chat" ? "recent_chat" : "recent_events"
                 ),
                 text: entry.content,
             });

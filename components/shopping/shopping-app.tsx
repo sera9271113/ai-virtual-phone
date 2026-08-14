@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   AlertCircle,
   Check,
@@ -66,6 +66,15 @@ type ShoppingAppProps = {
 
 type ShoppingTabId = "home" | "orders" | "cart" | "account";
 type ShoppingSectionSearchTabId = Exclude<ShoppingTabId, "home">;
+
+type ShoppingPaymentSource = {
+  id: string;
+  title: string;
+  description: string;
+  balance: number;
+  familyCardId?: string;
+  icon?: ReactNode;
+};
 
 type ShoppingProductDetail = ShoppingProduct & {
   quantityLabel?: string;
@@ -520,7 +529,7 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
     );
     return { orderAmount, totalPayment: orderAmount };
   }, [state.cartItems]);
-  const selectedPaymentSource = useMemo(
+  const selectedPaymentSource = useMemo<ShoppingPaymentSource | null>(
     () => selectedPaymentSourceId === WALLET_BALANCE_ACCOUNT_ID
       ? {
           id: WALLET_BALANCE_ACCOUNT_ID,

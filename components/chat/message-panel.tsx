@@ -5,6 +5,7 @@ import { CheckCheck, Plus } from "lucide-react";
 import { generateChatCompletion, flattenCompletionResult } from "@/lib/chat-engine";
 import { loadChatSessions, type ChatMessage, type ChatSession } from "@/lib/chat-storage";
 import { loadCharacters } from "@/lib/character-storage";
+import { resolveUserIdentity } from "@/lib/settings-storage";
 import { parseAIResponse } from "@/lib/rich-message-parser";
 import {
     loadMessageEntries,
@@ -13,6 +14,7 @@ import {
     deleteMessageEntry,
     deleteMessageEntriesFrom,
     clearMessageEntries,
+    updateMessageEntry,
     type MessageEntry,
 } from "@/lib/message-storage";
 import { ChatFallbackAvatar } from "./chat-fallback-avatar";
@@ -70,6 +72,8 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
     const [isGenerating, setIsGenerating] = useState(false);
     const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
     const [contextMenuAnchor, setContextMenuAnchor] = useState<{ x: number; y: number } | null>(null);
+    const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+    const [editingContent, setEditingContent] = useState("");
     const [messageSearchQuery, setMessageSearchQuery] = useState("");
     const [version, setVersion] = useState(0);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -91,6 +95,7 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
     });
     const selectedSession = sessions.find(session => session.contactId === selectedCharacterId);
     const selectedCharacter = characters.find(character => character.id === selectedCharacterId);
+    const userName = selectedCharacterId ? resolveUserIdentity(selectedCharacterId, "message")?.name || "用户" : "用户";
 
     useEffect(() => {
         if (!selectedCharacterId) return;
@@ -116,26 +121,39 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [entries, isGenerating]);
 
-    const requestReply = async (history: MessageEntry[]) => {
-        if (!selectedCharacterId || !selectedSession || isGenerating) return;
+    useEffect(() => {
+        if (!activeEntryId) return;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") closeContextMenu();
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [activeEntryId]);
+
+    const requestReply = async (history: MessageEntry[], targetCharacterId = selectedCharacterId) => {
+        const targetSession = targetCharacterId
+            ? loadChatSessions().find(session => session.contactId === targetCharacterId && !session.isGroup)
+            : undefined;
+        const targetCharacter = targetCharacterId ? characters.find(character => character.id === targetCharacterId) : undefined;
+        if (!targetCharacterId || !targetSession || isGenerating) return;
         const controller = new AbortController();
         generationControllerRef.current = controller;
         setIsGenerating(true);
 
         try {
             const blacklistContext: ChatMessage = {
-                id: `message-blacklist-context-${selectedSession.id}`,
-                sessionId: selectedSession.id,
+                id: `message-blacklist-context-${targetSession.id}`,
+                sessionId: targetSession.id,
                 role: "system",
-                content: selectedSession.isBlacklisted
-                    ? "系统状态：用户已将你在 Chat 中拉黑。你仍然可以通过 Message 短信联系用户。请意识到这一点，并根据你的人设自然地表达对此事的反应。"
-                    : "系统状态：你正在通过 Message 与用户短信联系。Chat 与 Message 是独立渠道。",
+                content: targetSession.isBlacklisted
+                    ? `系统状态：当前渠道是 Message 短信。${resolveUserIdentity(targetCharacterId, "message")?.name || "用户"}已将你在微信 Chat 中拉黑，因此你不能在微信中回复；你仍可以通过 Message 联系${resolveUserIdentity(targetCharacterId, "message")?.name || "用户"}。你是${targetCharacter?.name || "角色"}，对方是${resolveUserIdentity(targetCharacterId, "message")?.name || "用户"}。请记住这个渠道边界，并自然回应自己被拉黑这件事。`
+                    : `系统状态：当前渠道是 Message 短信，不是微信 Chat。你是${targetCharacter?.name || "角色"}，对方是${resolveUserIdentity(targetCharacterId, "message")?.name || "用户"}。微信聊天记录与短信记录属于同一关系的不同渠道，不能把短信误认为微信消息，也不能遗忘刚才在微信中约定转到 Message。`,
                 status: "sent",
                 createdAt: new Date().toISOString(),
             };
             const result = await generateChatCompletion(
-                selectedSession,
-                [blacklistContext, ...toChatHistory(selectedSession, history)],
+                targetSession,
+                [blacklistContext, ...toChatHistory(targetSession, history)],
                 { appTags: ["chat", "text", "message"], excludeMessageEntries: true, signal: controller.signal },
             );
             const parsed = parseAIResponse(flattenCompletionResult(result), []);
@@ -145,12 +163,15 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
             const reply = texts.join("\n\n").trim();
             if (reply) {
                 const assistantEntry = pushMessageEntry({
-                    characterId: selectedCharacterId,
+                    characterId: targetCharacterId,
                     role: "assistant",
                     content: reply,
                 });
-                setEntries(current => [...current, assistantEntry]);
-                setVersion(current => current + 1);
+                if (selectedCharacterId === targetCharacterId) {
+                    setEntries(current => [...current, assistantEntry]);
+                    setVersion(current => current + 1);
+                }
+                window.dispatchEvent(new CustomEvent("message-thread-updated", { detail: { characterId: targetCharacterId } }));
             }
         } catch (error) {
             if (!(error instanceof DOMException && error.name === "AbortError")) {
@@ -161,6 +182,16 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
             setIsGenerating(false);
         }
     };
+
+    useEffect(() => {
+        const handleBlacklistedReply = (event: Event) => {
+            const characterId = (event as CustomEvent<{ characterId?: string }>).detail?.characterId;
+            if (!characterId) return;
+            void requestReply(loadMessageEntries(characterId), characterId);
+        };
+        window.addEventListener("message-request-reply", handleBlacklistedReply);
+        return () => window.removeEventListener("message-request-reply", handleBlacklistedReply);
+    });
 
     const toggleReplyGeneration = () => {
         if (isGenerating) {
@@ -178,11 +209,28 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
         const nextEntries = [...entries, userEntry];
         setEntries(nextEntries);
         setDraft("");
+        void requestReply(nextEntries);
     };
 
     const closeContextMenu = () => {
         setActiveEntryId(null);
         setContextMenuAnchor(null);
+        setEditingEntryId(null);
+        setEditingContent("");
+    };
+
+    const beginEditing = () => {
+        if (!activeEntry) return;
+        setEditingEntryId(activeEntry.id);
+        setEditingContent(activeEntry.content);
+        setContextMenuAnchor(null);
+    };
+
+    const saveEditing = () => {
+        if (!activeEntry || !editingContent.trim()) return;
+        const updated = updateMessageEntry(activeEntry.characterId, activeEntry.id, editingContent.trim());
+        if (updated) setEntries(current => current.map(entry => entry.id === updated.id ? updated : entry));
+        closeContextMenu();
     };
 
     const handleEntryPointerDown = (event: React.PointerEvent, entryId: string) => {
@@ -214,7 +262,7 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
     return (
         <div className={`message-panel${selectedCharacterId ? " has-thread" : ""}`}>
             <aside className="message-thread-list">
-                <label className="chat-search-bar message-list-search">
+                <label className="chat-search-bar chat-search-bar--compact message-list-search">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-icon)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input
                         className="chat-search-input"
@@ -244,7 +292,7 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
                             </span>
                             <span className="message-thread-copy">
                                 <span className="message-thread-heading">
-                                    <strong>{session.alias || character.name}</strong>
+                                    <strong title={session.alias || character.name}>{session.alias || character.name}</strong>
                                     {latest && <time>{formatMessagePreviewTime(latest.createdAt)}</time>}
                                 </span>
                                 <span className="message-thread-preview">{latest?.content || "开始短信对话"}</span>
@@ -322,6 +370,7 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
                             {entries.map((entry, index) => {
                                 const isLastInMessageGroup = index === entries.length - 1 || entries[index + 1].role !== entry.role;
                                 const isFirstMessageOfDay = index === 0 || getMessageDateKey(entries[index - 1].createdAt) !== getMessageDateKey(entry.createdAt);
+                                const bubbleParts = entry.content.split(/\n\s*\n+/).map(part => part.trim()).filter(Boolean);
                                 return (
                                     <Fragment key={entry.id}>
                                         {isFirstMessageOfDay && <time className="message-date-divider">{formatMessageDate(entry.createdAt)}</time>}
@@ -339,9 +388,17 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
                                             <div className={`message-bubble-row ${entry.role}`}>
                                                 {entry.role === "user" && <CheckCheck className="message-sent-icon" size={15} strokeWidth={1.8} aria-label="已发送" />}
                                                 <div className="message-bubble-stack">
-                                                    <div className="message-bubble">{entry.content}</div>
+                                                    {entry.role === "assistant"
+                                                        ? bubbleParts.map((part, partIndex) => (
+                                                            <div className="message-bubble-item" key={`${entry.id}-${partIndex}`}>
+                                                                <div className="message-bubble">{part}</div>
+                                                                <CheckCheck className="message-sent-icon" size={15} strokeWidth={1.8} aria-label="已发送" />
+                                                            </div>
+                                                        ))
+                                                        : bubbleParts.map((part, partIndex) => (
+                                                            <div className="message-bubble" key={`${entry.id}-${partIndex}`}>{part}</div>
+                                                        ))}
                                                 </div>
-                                                {entry.role === "assistant" && <CheckCheck className="message-sent-icon" size={15} strokeWidth={1.8} aria-label="已发送" />}
                                             </div>
                                             {isLastInMessageGroup && <time className={`message-bubble-time ${entry.role}`}>{formatMessageTimestamp(entry.createdAt)}</time>}
                                         </div>
@@ -395,6 +452,24 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
                                 </button>
                             </div>
                         </div>
+                        {activeEntry && editingEntryId === activeEntry.id && (
+                            <div className="message-edit-overlay" onPointerDown={closeContextMenu}>
+                                <div className="message-edit-dialog" onPointerDown={event => event.stopPropagation()}>
+                                    <div className="message-edit-title-row">
+                                        <strong>编辑短信</strong>
+                                        <button type="button" onClick={closeContextMenu} aria-label="关闭编辑">×</button>
+                                    </div>
+                                    <textarea value={editingContent} onChange={event => setEditingContent(event.target.value)} autoFocus />
+                                    <div className="message-edit-actions">
+                                        <button type="button" onClick={closeContextMenu}>取消</button>
+                                        <button type="button" onClick={saveEditing} disabled={!editingContent.trim()}>保存</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {activeEntry && contextMenuAnchor && (
+                            <div className="message-context-backdrop" onPointerDown={closeContextMenu} aria-hidden="true" />
+                        )}
                         {activeEntry && contextMenuAnchor && (
                             <div
                                 className="ctx-menu chat-floating-ctx-menu message-context-menu flex flex-col items-center gap-[6px] py-[4px] px-0"
@@ -404,6 +479,7 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
                             >
                                 <div className="flex">
                                     <button type="button" className="ctx-menu-btn" onClick={() => { void navigator.clipboard?.writeText(activeEntry.content); closeContextMenu(); }}>复制</button>
+                                    <button type="button" className="ctx-menu-btn" onClick={beginEditing}>编辑</button>
                                 </div>
                                 <div className="flex">
                                     <button type="button" className="ctx-menu-btn ctx-menu-btn-danger" onClick={() => { deleteMessageEntry(activeEntry.characterId, activeEntry.id); setEntries(current => current.filter(entry => entry.id !== activeEntry.id)); closeContextMenu(); }}>删除</button>
