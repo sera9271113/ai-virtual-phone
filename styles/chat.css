@@ -4258,6 +4258,11 @@
   transition: transform 0.16s, opacity 0.16s;
 }
 
+.chat-plus-menu-item:first-child .chat-plus-icon-box svg {
+  width: 34px;
+  height: 34px;
+}
+
 .chat-plus-menu-item[data-active] .chat-plus-icon-box {
   transform: scale(1.06);
 }

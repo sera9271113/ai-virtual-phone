@@ -644,6 +644,18 @@ function emptyResponseDetails(data: unknown): {
     return { finishReason, blockReason, safetyRatings, message };
 }
 
+async function providerErrorMessage(response: Response, prefix: string): Promise<string> {
+    const errorText = await response.text();
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+    if (contentType.includes("text/html")) {
+        const gatewayLabel = response.status === 504 ? "上游长时间未返回任何内容，网关等待超时"
+            : response.status === 502 ? "上游 API 网关连接失败"
+            : "上游 API 返回了网页错误";
+        return `${prefix} ${response.status}: ${gatewayLabel}`;
+    }
+    return `${prefix} ${response.status}: ${errorText}`;
+}
+
 async function readSseStream(
     response: Response,
     providerKind: ChatCompletionStreamResult["providerKind"],
@@ -720,6 +732,7 @@ export async function sendLLMStreamRequest(
         appTags?: string[];
         followUpCount?: number;
         signal?: AbortSignal;
+        proxyViaServer?: boolean;
     },
     callbacks?: ChatCompletionStreamCallbacks,
 ): Promise<ChatCompletionStreamResult> {
@@ -731,15 +744,16 @@ export async function sendLLMStreamRequest(
     const detachExternalAbort = attachExternalAbort(llmAbort, options?.signal);
 
     try {
-        const response = await fetch(request.url, {
+        const response = await fetch(options?.proxyViaServer ? "/api/llm-proxy" : request.url, {
             method: "POST",
-            headers: request.headers,
-            body: requestBodyJson,
+            headers: options?.proxyViaServer ? { "Content-Type": "application/json" } : request.headers,
+            body: options?.proxyViaServer
+                ? JSON.stringify({ url: request.url, headers: request.headers, body: requestBodyJson })
+                : requestBodyJson,
             signal: llmAbort.signal,
         });
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new ChatEngineError(`API Stream Error ${response.status}: ${errorText}`);
+            throw new ChatEngineError(await providerErrorMessage(response, "API Stream Error"));
         }
         const { content: streamedContent, rawResponse } = await readSseStream(response, request.providerKind, callbacks);
         if (!streamedContent.trim()) {
@@ -807,6 +821,7 @@ export async function sendLLMRequest(
         followUpCount?: number;
         debugSessionId?: string;
         signal?: AbortSignal;
+        proxyViaServer?: boolean;
     },
 ): Promise<string> {
     const requestMessages = toLlmRequestMessages(messages);
@@ -842,16 +857,17 @@ export async function sendLLMRequest(
     const detachExternalAbort = attachExternalAbort(llmAbort, options?.signal);
 
     try {
-        const response = await fetch(request.url, {
+        const response = await fetch(options?.proxyViaServer ? "/api/llm-proxy" : request.url, {
             method: "POST",
-            headers: request.headers,
-            body: requestBodyJson,
+            headers: options?.proxyViaServer ? { "Content-Type": "application/json" } : request.headers,
+            body: options?.proxyViaServer
+                ? JSON.stringify({ url: request.url, headers: request.headers, body: requestBodyJson })
+                : requestBodyJson,
             signal: llmAbort.signal,
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new ChatEngineError(`API Error ${response.status}: ${errorText}`);
+            throw new ChatEngineError(await providerErrorMessage(response, "API Error"));
         }
 
         const data = await response.json();

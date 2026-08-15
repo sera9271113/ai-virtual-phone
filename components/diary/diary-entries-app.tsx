@@ -599,7 +599,6 @@ export function DiaryEntriesApp({ onBack, onNotice }: DiaryEntriesAppProps) {
                       toggleEntryExpanded(entry.id);
                     }}
                     onEdit={() => setEditCandidateEntry(entry)}
-                    onDelete={() => setDeleteCandidateEntry(entry)}
                   />
                 ))}
               </div>
@@ -759,12 +758,11 @@ export function DiaryEntriesApp({ onBack, onNotice }: DiaryEntriesAppProps) {
   );
 }
 
-function DiaryEntryCardContent({ entry, avatarUrl, isExpanded, onEdit, onDelete }: {
+function DiaryEntryCardContent({ entry, avatarUrl, isExpanded, onEdit }: {
   entry: DiaryEntry;
   avatarUrl?: string;
   isExpanded?: boolean;
   onEdit?: (event: MouseEvent<HTMLButtonElement>) => void;
-  onDelete?: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
   const preview = entry.blocks.map(blockPlainText).filter(Boolean).join(" ");
   const { date: entryDate, weekdayTime: entryWeekdayTime } = formatEntryDateParts(entry.createdAt);
@@ -799,7 +797,6 @@ function DiaryEntryCardContent({ entry, avatarUrl, isExpanded, onEdit, onDelete 
         </div>
         <div className="diary-entry-card-actions-group">
           <button type="button" className="diary-entry-action-btn" aria-label="修改" onClick={onEdit}><Pencil size={18} /></button>
-          <button type="button" className="diary-entry-action-btn" aria-label="删除" onClick={onDelete}><Trash2 size={18} /></button>
         </div>
       </div>
     </>
@@ -813,7 +810,6 @@ function DiaryEntryCard({
   isExpanded,
   onClick,
   onEdit,
-  onDelete,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -826,7 +822,6 @@ function DiaryEntryCard({
   isExpanded?: boolean;
   onClick: (event: MouseEvent<HTMLButtonElement>) => void;
   onEdit: (event: MouseEvent<HTMLButtonElement>) => void;
-  onDelete: (event: MouseEvent<HTMLButtonElement>) => void;
   onPointerDown: (event: PointerEvent<HTMLButtonElement>) => void;
   onPointerMove: (event: PointerEvent<HTMLButtonElement>) => void;
   onPointerUp: (event: PointerEvent<HTMLButtonElement>) => void;
@@ -851,7 +846,6 @@ function DiaryEntryCard({
         avatarUrl={avatarUrl}
         isExpanded={isExpanded}
         onEdit={event => { event.stopPropagation(); onEdit(event); }}
-        onDelete={event => { event.stopPropagation(); onDelete(event); }}
       />
     </button>
   );

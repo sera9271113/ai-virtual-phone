@@ -405,7 +405,7 @@ export function loadNativeTimeline(
 
     for (const message of loadMessageEntries(characterId)) {
         if (options?.afterTimestamp && message.createdAt <= options.afterTimestamp) continue;
-        const sender = message.role === "user" ? `用户（${userName}）` : `角色（${charName}）`;
+        const sender = message.role === "user" ? userName : charName;
         const label = formatPromptEventLabel("短信", message.createdAt, timeAware, timestampOptions);
         const content = stripStateAndInnerForPrompt(message.content || "").trim();
         if (!content) continue;

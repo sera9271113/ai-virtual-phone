@@ -1,7 +1,7 @@
 import type { ImageGenerationSettings } from "./settings-types";
 import { loadImageGenerationSettings } from "./settings-storage";
 import { getChatImageFromIndexedDB } from "./chat-asset-storage";
-import { storeMediaBlob } from "./media-cache-storage";
+import { deleteMediaRef, storeMediaBlob } from "./media-cache-storage";
 import { throwIfAborted } from "./abort-utils";
 
 export type ImageGenerationResult = {
@@ -14,6 +14,8 @@ export type ImageGenerationResult = {
   revisedPrompt?: string;
 };
 
+export type BatchImageGenerationResult = ImageGenerationResult[];
+
 type ExtractedImage =
   | { kind: "b64"; b64: string; mimeType?: string; revisedPrompt?: string }
   | { kind: "url"; url: string; revisedPrompt?: string };
@@ -22,6 +24,10 @@ type ImageGenerationApiResponse = {
   b64: string;
   mimeType?: string;
   revisedPrompt?: string;
+};
+
+type ImageGenerationApiBatchResponse = {
+  images: ImageGenerationApiResponse[];
 };
 
 const IMAGE_MODEL_HINTS = [
@@ -264,6 +270,41 @@ async function parseImageGenerationResponse(res: Response, signal?: AbortSignal)
   };
 }
 
+async function parseImageGenerationBatchResponse(
+  res: Response,
+  expectedCount: number,
+  signal?: AbortSignal,
+): Promise<ImageGenerationApiBatchResponse> {
+  throwIfAborted(signal);
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`生图 API 错误 ${res.status}: ${text.slice(0, 600)}`);
+  }
+  if (contentType.startsWith("image/")) {
+    throw new Error(`生图 API 只返回了 1 张图片，需要 ${expectedCount} 张`);
+  }
+  const json = await res.json();
+  throwIfAborted(signal);
+  const record = json && typeof json === "object" ? json as Record<string, unknown> : {};
+  const values = Array.isArray(record.data) ? record.data : Array.isArray(record.images) ? record.images : [];
+  const images: ImageGenerationApiResponse[] = [];
+  for (const value of values) {
+    const extracted = extractFromObject(value);
+    if (!extracted) continue;
+    if (extracted.kind === "url") {
+      const downloaded = await fetchImageUrlAsBase64(extracted.url, signal);
+      images.push({ ...downloaded, revisedPrompt: extracted.revisedPrompt });
+    } else {
+      images.push({ b64: extracted.b64, mimeType: extracted.mimeType || "image/png", revisedPrompt: extracted.revisedPrompt });
+    }
+  }
+  if (images.length < expectedCount) {
+    throw new Error(`生图 API 返回了 ${images.length} 张图片，需要 ${expectedCount} 张`);
+  }
+  return { images: images.slice(0, expectedCount) };
+}
+
 export function filterLikelyImageModels(models: string[]): string[] {
   const filtered = models.filter(model => {
     const lower = model.toLowerCase();
@@ -349,21 +390,107 @@ async function generateImageDirect(params: {
     });
   }
 
-  // 总超时 180s,外部 signal 联动;防止上游悬挂导致界面永久转圈
+  // 总超时 600s,外部 signal 联动;与服务端慢生图上限保持一致
   const controller = new AbortController();
   const onOuterAbort = () => controller.abort();
   if (signal) signal.addEventListener("abort", onOuterAbort, { once: true });
-  const totalTimer = setTimeout(() => controller.abort(), 180_000);
+  const totalTimer = setTimeout(() => controller.abort(), 600_000);
   try {
     return await parseImageGenerationResponse(await fetch(url, { method: "POST", headers, body, signal: controller.signal }), signal);
   } catch (error) {
     if (controller.signal.aborted && !signal?.aborted) {
-      throw new Error(proxyBaseUrl ? "生图代理超时（180 秒未返回）" : "生图请求超时（180 秒未返回）");
+      throw new Error(proxyBaseUrl ? "生图代理超时（600 秒未返回）" : "生图请求超时（600 秒未返回）");
     }
     if (error instanceof TypeError) {
       throw new Error(proxyBaseUrl ? "生图代理连接失败" : "浏览器直连失败：该 API 可能未允许跨域请求。");
     }
     throw error;
+  } finally {
+    clearTimeout(totalTimer);
+    if (signal) signal.removeEventListener("abort", onOuterAbort);
+  }
+}
+
+async function generateImageDirectBatch(params: {
+  settings: ImageGenerationSettings;
+  prompts: string[];
+  signal?: AbortSignal;
+  proxyBaseUrl?: string;
+}): Promise<ImageGenerationApiBatchResponse> {
+  const { settings, prompts, signal, proxyBaseUrl } = params;
+  throwIfAborted(signal);
+  const url = buildImageUrl(proxyBaseUrl || settings.baseUrl, "generations");
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${settings.apiKey}`,
+    "Content-Type": "application/json",
+  };
+  if (proxyBaseUrl) headers["x-upstream-base-url"] = normalizeBaseUrl(settings.baseUrl);
+  const body = JSON.stringify({
+    model: settings.model,
+    prompts,
+    n: prompts.length,
+    ...(settings.size && settings.size !== "auto" ? { size: settings.size } : {}),
+    ...(settings.quality && settings.quality !== "auto" ? { quality: settings.quality } : {}),
+  });
+  const controller = new AbortController();
+  const onOuterAbort = () => controller.abort();
+  if (signal) signal.addEventListener("abort", onOuterAbort, { once: true });
+  const totalTimer = setTimeout(() => controller.abort(), 600_000);
+  try {
+    return await parseImageGenerationBatchResponse(
+      await fetch(url, { method: "POST", headers, body, signal: controller.signal }),
+      prompts.length,
+      signal,
+    );
+  } finally {
+    clearTimeout(totalTimer);
+    if (signal) signal.removeEventListener("abort", onOuterAbort);
+  }
+}
+
+async function generateImageViaServerBatch(params: {
+  settings: ImageGenerationSettings;
+  prompts: string[];
+  signal?: AbortSignal;
+}): Promise<ImageGenerationApiBatchResponse> {
+  const { settings, prompts, signal } = params;
+  throwIfAborted(signal);
+  const controller = new AbortController();
+  const onOuterAbort = () => controller.abort();
+  if (signal) signal.addEventListener("abort", onOuterAbort, { once: true });
+  const totalTimer = setTimeout(() => controller.abort(), 600_000);
+  try {
+    const res = await fetch("/api/image-generation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-stream-heartbeat": "1" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        apiKey: settings.apiKey,
+        baseUrl: settings.baseUrl,
+        model: settings.model,
+        prompts,
+        n: prompts.length,
+        size: settings.size,
+        quality: settings.quality,
+      }),
+    });
+    const contentType = (res.headers.get("content-type") || "").toLowerCase();
+    let data: { httpStatus?: number; images?: ImageGenerationApiResponse[]; error?: string };
+    if (contentType.includes("text/plain")) {
+      const text = await res.text();
+      const marker = "@@RESULT@@";
+      const index = text.lastIndexOf(marker);
+      if (index < 0) throw new Error(`生图请求失败 ${res.status}（未收到批量结果）`);
+      data = JSON.parse(text.slice(index + marker.length)) as typeof data;
+    } else {
+      data = await res.json().catch(() => ({})) as typeof data;
+    }
+    throwIfAborted(signal);
+    if (data.error) throw new Error(data.error);
+    if (!res.ok || !Array.isArray(data.images) || data.images.length < prompts.length) {
+      throw new Error(data.error || `生图请求返回图片数量不足，需要 ${prompts.length} 张`);
+    }
+    return { images: data.images.slice(0, prompts.length) };
   } finally {
     clearTimeout(totalTimer);
     if (signal) signal.removeEventListener("abort", onOuterAbort);
@@ -402,11 +529,11 @@ async function generateImageViaServer(params: {
   const { settings, prompt, referenceImageDataUrl, signal } = params;
   throwIfAborted(signal);
   // 防"无限卡住":函数被平台中途击杀时流可能既不关闭也不报错。
-  // 总超时 180s + 断流检测(心跳每 3s 一个字节,超过 25s 没有任何字节视为断流)。
+  // 总超时 600s + 断流检测(心跳每 3s 一个字节,超过 25s 没有任何字节视为断流)。
   const controller = new AbortController();
   const onOuterAbort = () => controller.abort();
   if (signal) signal.addEventListener("abort", onOuterAbort, { once: true });
-  const totalTimer = setTimeout(() => controller.abort(), 180_000);
+  const totalTimer = setTimeout(() => controller.abort(), 600_000);
   try {
     // x-stream-heartbeat:服务端以心跳流响应,真正的结果附在流末尾的 @@RESULT@@ 标记后。
     // 避免托管平台对缓冲响应的 10~26s 超时把慢生图(30~120s)掐成 504。
@@ -524,6 +651,35 @@ export async function generateImageFromConfiguredApi(params: {
     usedReferenceImage: Boolean(referenceImageDataUrl),
     revisedPrompt: data.revisedPrompt,
   };
+}
+
+export async function generateImagesFromConfiguredApi(params: {
+  descriptions: string[];
+  settings?: ImageGenerationSettings;
+  signal?: AbortSignal;
+}): Promise<ImageGenerationResult[]> {
+  const settings = params.settings ?? loadImageGenerationSettings();
+  const descriptions = params.descriptions.map(value => value.trim()).filter(Boolean);
+  if (!settings.enabled || descriptions.length === 0 || !settings.apiKey.trim() || !settings.baseUrl.trim() || !settings.model.trim()) return [];
+  const prompts = descriptions.map(description => mergePrompt(description, settings.extraPrompt, settings.negativePrompt));
+  const data = settings.requestMode === "direct" || IMAGE_GEN_PROXY_URL
+    ? await generateImageDirectBatch({ settings, prompts, signal: params.signal, proxyBaseUrl: settings.requestMode === "direct" ? undefined : IMAGE_GEN_PROXY_URL })
+    : await generateImageViaServerBatch({ settings, prompts, signal: params.signal });
+  const results: ImageGenerationResult[] = [];
+  try {
+    for (let index = 0; index < data.images.length; index += 1) {
+      throwIfAborted(params.signal);
+      const image = data.images[index];
+      const mimeType = image.mimeType || "image/png";
+      const blob = base64ToBlob(image.b64, mimeType);
+      const mediaRef = await storeMediaBlob(blob, mimeType, "image");
+      results.push({ mediaRef, dataUrl: `data:${mimeType};base64,${image.b64}`, blob, mimeType, prompt: prompts[index], usedReferenceImage: false, revisedPrompt: image.revisedPrompt });
+    }
+    return results;
+  } catch (error) {
+    await Promise.all(results.map(result => deleteMediaRef(result.mediaRef)));
+    throw error;
+  }
 }
 
 export function generatedImageFilename(description: string, mimeType = "image/png"): string {

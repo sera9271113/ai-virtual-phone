@@ -53,8 +53,8 @@ export async function requestMessageReply(characterId: string, history = loadMes
             sessionId: targetSession.id,
             role: "system",
             content: targetSession.isBlacklisted
-                ? `系统状态：当前渠道是 Message 短信。${userName}已将你在微信 Chat 中拉黑，因此你不能在微信中回复；你仍可以通过 Message 联系${userName}。你是${targetCharacter.name || "角色"}，对方是${userName}。请记住这个渠道边界，并自然回应自己被拉黑这件事。`
-                : `系统状态：当前渠道是 Message 短信，不是微信 Chat。你是${targetCharacter.name || "角色"}，对方是${userName}。微信聊天记录与短信记录属于同一关系的不同渠道，不能把短信误认为微信消息，也不能遗忘刚才在微信中约定转到 Message。`,
+                ? `系统状态：当前渠道是 Message 短信。${userName}已将你在微信 Chat 中拉黑，因此你不能在微信中回复；你仍可以通过 Message 联系${userName}。你是${targetCharacter.name || "角色"}，对方是${userName}。请记住这个渠道边界，但不要把对话限定为讨论被拉黑，可以自然聊任何话题。`
+                : `系统状态：当前渠道是 Message 短信，${userName}没有将你在微信 Chat 中拉黑。Message 和 Chat 一样可以自然聊任何话题，不要把短信限定为某一种内容。你是${targetCharacter.name || "角色"}，对方是${userName}。`,
             status: "sent",
             createdAt: new Date().toISOString(),
         };

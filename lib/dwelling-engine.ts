@@ -1,4 +1,4 @@
-import type { DwellingLayout, DwellingPosition, DwellingFurnitureItem } from "./dwelling-storage";
+import type { DwellingFurniture, DwellingLayout, DwellingMarker, DwellingPosition, DwellingRoom } from "./dwelling-storage";
 import { loadDwellingLayout } from "./dwelling-storage";
 import type { ApiConfig, PresetConfig, RegexConfig, WorldBookConfig } from "./settings-types";
 import { loadCharacters } from "./character-storage";
@@ -12,7 +12,7 @@ import {
     resolveUserIdentity,
 } from "./settings-storage";
 import { assemblePromptPayload, type LLMMessage } from "./llm-prompt-assembler";
-import { previewMessagesForApi, sendLLMRequest } from "./chat-engine";
+import { previewMessagesForApi, sendLLMRequest, sendLLMStreamRequest } from "./chat-engine";
 import { loadMemoryConfig } from "./memory-storage";
 import { retrieveCoreMemoriesForPrompt, retrieveMemoriesForPrompt } from "./memory-service";
 import { formatCoreMemories, formatLongTermMemories } from "./memory-injector";
@@ -113,11 +113,56 @@ function deduplicatePositions(rooms: DwellingLayout["rooms"]): void {
     }
 }
 
+// ── Marker sanitize + position fallback ───────
+
+/** 标注点安全范围：避开顶部玻璃栏区和底部引言区 */
+const MARKER_X_MIN = 0.08, MARKER_X_MAX = 0.92;
+const MARKER_Y_MIN = 0.24, MARKER_Y_MAX = 0.82;
+
+const POSITION_MARKERS: Record<DwellingPosition, DwellingMarker> = {
+    "top-left": { x: 0.26, y: 0.3 }, "top-center": { x: 0.5, y: 0.26 }, "top-right": { x: 0.74, y: 0.3 },
+    "center-left": { x: 0.24, y: 0.5 }, "center": { x: 0.5, y: 0.48 }, "center-right": { x: 0.76, y: 0.5 },
+    "bottom-left": { x: 0.27, y: 0.7 }, "bottom-center": { x: 0.5, y: 0.72 }, "bottom-right": { x: 0.73, y: 0.7 },
+};
+
+function clampMarker(m: DwellingMarker): DwellingMarker {
+    return {
+        x: Math.min(MARKER_X_MAX, Math.max(MARKER_X_MIN, m.x)),
+        y: Math.min(MARKER_Y_MAX, Math.max(MARKER_Y_MIN, m.y)),
+    };
+}
+
+/** 取家具标注点：优先 LLM 输出的 marker，旧数据/缺失时按九宫格 position 兜底 */
+export function resolveFurnitureMarker(f: DwellingFurniture): DwellingMarker {
+    const m = f.marker;
+    if (m && Number.isFinite(m.x) && Number.isFinite(m.y)) return clampMarker(m);
+    return POSITION_MARKERS[f.position] ?? POSITION_MARKERS.center;
+}
+
+function sanitizeLayoutExtras(rooms: DwellingLayout["rooms"]): void {
+    for (const room of rooms) {
+        if (typeof room.en === "string") room.en = room.en.trim().toUpperCase().slice(0, 24) || undefined;
+        else room.en = undefined;
+        if (typeof room.imagePrompt === "string") room.imagePrompt = room.imagePrompt.trim() || undefined;
+        else room.imagePrompt = undefined;
+        for (const f of room.furniture) {
+            if (typeof f.en === "string") f.en = f.en.trim().toUpperCase().slice(0, 24) || undefined;
+            else f.en = undefined;
+            const m = f.marker as unknown;
+            if (m && typeof m === "object"
+                && Number.isFinite((m as DwellingMarker).x) && Number.isFinite((m as DwellingMarker).y)) {
+                f.marker = clampMarker(m as DwellingMarker);
+            } else {
+                f.marker = undefined;
+            }
+        }
+    }
+}
+
 // ── Strip markdown fences + parse JSON ────────
 
 function extractJSON(text: string): unknown | null {
     let s = text.trim();
-
     // Strip thinking / reasoning tags
     s = s.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     s = s.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "").trim();
@@ -150,6 +195,54 @@ function extractJSON(text: string): unknown | null {
     return null;
 }
 
+type LocatedFurnitureMarker = { furnitureId: string; marker: DwellingMarker };
+
+export async function locateDwellingFurnitureMarkers(
+    characterId: string,
+    room: DwellingRoom,
+    imageDataUrl: string,
+): Promise<LocatedFurnitureMarker[]> {
+    const { apiConfig } = resolveDwellingConfigs(characterId);
+    if (!apiConfig || apiConfig.enableImageRecognition !== true || !imageDataUrl.startsWith("data:image/")) return [];
+
+    const furnitureList = room.furniture.map((furniture, index) => `${index}: ${furniture.label}`).join("\n");
+    const prompt = [
+        "识别这张室内图片中下列家具主体的实际位置。只定位确实可见且能明确对应的家具，不要猜测。",
+        furnitureList,
+        "坐标以完整原图左上角为(0,0)、右下角为(1,1)，取家具可见主体的中心点。",
+        "只输出JSON：{\"furniture\":[{\"index\":0,\"x\":0.5,\"y\":0.5,\"visible\":true}]}。不要输出说明或Markdown。",
+    ].join("\n");
+    const rawOutput = await sendLLMRequest(apiConfig, null, [{
+        role: "user",
+        content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: imageDataUrl, detail: "high" } },
+        ],
+    }], [], undefined, {
+        skipOutputRegex: true,
+        appId: "dwelling",
+        appTags: ["dwelling", "image-location"],
+        proxyViaServer: true,
+    });
+    const parsed = extractJSON(rawOutput);
+    const entries = parsed && typeof parsed === "object" && Array.isArray((parsed as { furniture?: unknown }).furniture)
+        ? (parsed as { furniture: unknown[] }).furniture
+        : [];
+    const seen = new Set<number>();
+    const located: LocatedFurnitureMarker[] = [];
+    for (const entry of entries) {
+        if (!entry || typeof entry !== "object") continue;
+        const item = entry as { index?: unknown; x?: unknown; y?: unknown; visible?: unknown };
+        if (item.visible !== true || !Number.isInteger(item.index) || typeof item.x !== "number" || typeof item.y !== "number") continue;
+        const index = item.index as number;
+        if (index < 0 || index >= room.furniture.length || seen.has(index)) continue;
+        if (!Number.isFinite(item.x) || !Number.isFinite(item.y) || item.x < 0 || item.x > 1 || item.y < 0 || item.y > 1) continue;
+        seen.add(index);
+        located.push({ furnitureId: room.furniture[index].id, marker: { x: item.x, y: item.y } });
+    }
+    return located;
+}
+
 // ── Format existing layout as compact context text ──
 
 export function formatDwellingContext(layout: DwellingLayout, updatedAt: string): string {
@@ -173,9 +266,31 @@ export function formatDwellingContext(layout: DwellingLayout, updatedAt: string)
 
 export type DwellingRefreshMode = "full" | "items";
 
+const pendingLayoutGenerations = new Map<string, Promise<{ layout: DwellingLayout | null; error?: string }>>();
+
 export async function generateDwellingLayout(
     characterId: string,
     mode: DwellingRefreshMode = "full",
+    signal?: AbortSignal,
+): Promise<{ layout: DwellingLayout | null; error?: string }> {
+    const requestKey = characterId;
+    const pending = pendingLayoutGenerations.get(requestKey);
+    if (pending) return pending;
+
+    const generation = generateDwellingLayoutOnce(characterId, mode, signal);
+    pendingLayoutGenerations.set(requestKey, generation);
+    try {
+        return await generation;
+    } finally {
+        if (pendingLayoutGenerations.get(requestKey) === generation) {
+            pendingLayoutGenerations.delete(requestKey);
+        }
+    }
+}
+
+async function generateDwellingLayoutOnce(
+    characterId: string,
+    mode: DwellingRefreshMode,
     signal?: AbortSignal,
 ): Promise<{ layout: DwellingLayout | null; error?: string }> {
     const { apiConfig, preset, worldBooks, regexes } = resolveDwellingConfigs(characterId);
@@ -193,11 +308,13 @@ export async function generateDwellingLayout(
     try {
         const llmMessages = await buildDwellingMessages(characterId, preset, worldBooks, regexes, appTags, dwellingContext);
 
-        const rawOutput = await sendLLMRequest(apiConfig, preset, llmMessages, regexes, {
+        const { content: rawOutput } = await sendLLMStreamRequest(apiConfig, preset, llmMessages, regexes, {
             characterName: loadCharacters().find(c => c.id === characterId)?.name,
         }, {
             appId: "dwelling",
             appTags,
+            proxyViaServer: true,
+            signal,
         });
 
         if (!rawOutput) return { layout: null, error: "LLM 返回为空" };
@@ -240,6 +357,7 @@ export async function generateDwellingLayout(
         }
 
         deduplicatePositions(layout.rooms);
+        sanitizeLayoutExtras(layout.rooms);
 
         return { layout };
     } catch (e) {
@@ -268,12 +386,12 @@ export async function generateItemHtml(
             undefined,
             { dwellingRoom: roomName, dwellingFurniture: furnitureLabel, dwellingItem: itemName, dwellingItemPreview: itemPreview },
         );
-
-        const rawOutput = await sendLLMRequest(apiConfig, preset, llmMessages, regexes, {
+        const { content: rawOutput } = await sendLLMStreamRequest(apiConfig, preset, llmMessages, regexes, {
             characterName: loadCharacters().find(c => c.id === characterId)?.name,
         }, {
             appId: "dwelling",
             appTags,
+            proxyViaServer: true,
         });
 
         return { html: rawOutput || null };

@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ProxyAgent, type Dispatcher } from "undici";
 
-export const maxDuration = 120;
+export const maxDuration = 600;
+
+const IMAGE_GENERATION_TIMEOUT_MS = 600_000;
 
 type ImageGenerationRequest = {
   apiKey?: string;
   baseUrl?: string;
   model?: string;
   prompt?: string;
+  prompts?: string[];
+  n?: number;
   size?: string;
   quality?: string;
   referenceImageDataUrl?: string;
@@ -122,7 +126,11 @@ async function runImageGeneration(input: ImageGenerationRequest): Promise<{ stat
     const apiKey = input.apiKey?.trim();
     const baseUrl = input.baseUrl?.trim();
     const model = input.model?.trim();
-    const prompt = input.prompt?.trim();
+    const prompts = Array.isArray(input.prompts)
+      ? input.prompts.map(value => typeof value === "string" ? value.trim() : "").filter(Boolean)
+      : [];
+    const prompt = input.prompt?.trim() || prompts.join("\n\n--- NEXT ROOM ---\n\n");
+    const count = prompts.length || Math.max(1, Math.floor(input.n || 1));
     const hasReference = Boolean(input.referenceImageDataUrl?.trim());
 
     if (!apiKey) return { status: 400, body: { error: "缺少 API Key" } };
@@ -148,14 +156,15 @@ async function runImageGeneration(input: ImageGenerationRequest): Promise<{ stat
       headers["Content-Type"] = "application/json";
       body = JSON.stringify({
         model,
-        prompt,
+        prompt: prompts.length > 1 ? prompts : prompt,
+        ...(prompts.length > 1 ? { n: prompts.length } : {}),
         ...(input.size && input.size !== "auto" ? { size: input.size } : {}),
         ...(input.quality && input.quality !== "auto" ? { quality: input.quality } : {}),
       });
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120_000);
+    const timeout = setTimeout(() => controller.abort(), IMAGE_GENERATION_TIMEOUT_MS);
     let res: Response;
     try {
       res = await externalFetch(url, { method: "POST", headers, body, signal: controller.signal });
@@ -175,6 +184,28 @@ async function runImageGeneration(input: ImageGenerationRequest): Promise<{ stat
     }
 
     const json = await res.json();
+    const values = Array.isArray((json as Record<string, unknown>)?.data)
+      ? (json as Record<string, unknown>).data as unknown[]
+      : Array.isArray((json as Record<string, unknown>)?.images)
+        ? (json as Record<string, unknown>).images as unknown[]
+        : [];
+    if (count > 1 && values.length < count) {
+      return { status: 502, body: { error: `生图 API 返回了 ${values.length} 张图片，需要 ${count} 张` } };
+    }
+    if (count > 1) {
+      const images: Record<string, unknown>[] = [];
+      for (const value of values.slice(0, count)) {
+        const extracted = extractFromObject(value);
+        if (!extracted) continue;
+        if (extracted.kind === "url") {
+          images.push({ ...(await fetchImageUrl(extracted.url)), revisedPrompt: extracted.revisedPrompt });
+        } else {
+          images.push({ b64: extracted.b64, mimeType: extracted.mimeType || "image/png", revisedPrompt: extracted.revisedPrompt });
+        }
+      }
+      if (images.length < count) return { status: 502, body: { error: `生图 API 可解析图片数量不足，需要 ${count} 张` } };
+      return { status: 200, body: { images } };
+    }
     const extracted = extractFromObject(json);
     if (!extracted) {
       return { status: 502, body: { error: `生图 API 返回中没有找到图片字段：${JSON.stringify(Object.keys(json || {})).slice(0, 200)}` } };
