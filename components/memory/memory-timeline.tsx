@@ -120,6 +120,18 @@ function parseEntry(evt: NativeTimelineEntry, userName: string): ParsedEntry | n
         };
     }
 
+    if (evt.sourceApp === "shopping") {
+        const stripped = content.replace(/^亲属卡消费通知\s*[:：]?\s*/, "");
+        return {
+            type: "projection",
+            id: evt.id,
+            timestamp: evt.timestamp,
+            source: "custom_app",
+            label: "亲属卡",
+            message: stripped || content,
+        };
+    }
+
     // Direct chat: [私聊 ...] Sender: message
     if (evt.sourceApp === "chat" && evt.sourceDetail !== "group") {
         const m = content.match(/^\[私聊(?: [^\]]+)?\] (.+?): ([\s\S]*)$/);

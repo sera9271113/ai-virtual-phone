@@ -184,7 +184,7 @@ export function VnAssetPage({ onNotice }: VnAssetPageProps) {
           background: rgba(255,255,255,0.4);
           backdrop-filter: blur(28px);
           -webkit-backdrop-filter: blur(28px);
-          box-shadow: 0 30px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
         }
         .vna-studio-header {
           display: flex;

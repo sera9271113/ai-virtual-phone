@@ -2246,9 +2246,6 @@ export function MemoryBankPage({ view, selectedCharId, onSelectChar, onNotice }:
                 <p className="mem-picker-cover-title">Every moment we shared becomes a timeless memory</p>
                 <div className="mem-picker-divider"><span>✦</span></div>
                 <div className="mem-picker-cover-wrap">
-                    {"MEMORY".split("").map((ch, i) => (
-                        <span key={i} className={`mem-picker-cover-letter mem-picker-letter-${i}`}>{ch}</span>
-                    ))}
                     <div className="mem-picker-cover-clip">
                         {(() => {
                             const coverSrc = pickedCharId
