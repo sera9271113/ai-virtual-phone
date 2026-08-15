@@ -1004,9 +1004,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: var(--c-overlay);
   animation: xhsFadeIn 0.25s ease-out;
 }
 

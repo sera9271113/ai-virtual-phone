@@ -979,9 +979,7 @@
   align-items: flex-end;
   justify-content: center;
   padding: 16px;
-  background: rgba(53, 44, 61, 0.24);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: var(--c-overlay);
 }
 
 .app-market-sheet {

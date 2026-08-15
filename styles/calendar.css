@@ -1457,7 +1457,7 @@
 }
 
 .calendar-edit-modal-overlay {
-  background: transparent;
+  background: var(--c-overlay);
   animation: none;
 }
 

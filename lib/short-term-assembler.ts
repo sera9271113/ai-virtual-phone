@@ -30,6 +30,7 @@ import { loadCheckPhoneProjectionEntries } from "./checkphone-storage";
 import { formatShoppingPaymentRequestHistory } from "./shopping-payment-request";
 import { loadCustomAppTimelineEntries } from "./custom-app-storage";
 import { loadMessageEntries } from "./message-storage";
+import { loadShoppingMemoryEntries } from "./shopping-memory";
 import {
     canCharacterSeeMomentPost,
     getVisibleMomentCommentsForCharacter,
@@ -51,7 +52,7 @@ function formatPhotoDirectiveForPrompt(msg: ChatMessage): string {
 
 export type NativeTimelineEntry = {
     id: string;
-    sourceApp: "chat" | "message" | "moments" | "story" | "vn" | "map" | "game" | "diary" | "xiaohongshu" | "interview_magazine" | "cocreate" | "checkphone" | "custom_app";
+    sourceApp: "chat" | "message" | "moments" | "story" | "vn" | "map" | "game" | "diary" | "xiaohongshu" | "interview_magazine" | "cocreate" | "checkphone" | "shopping" | "custom_app";
     sourceDetail?: "direct" | "message" | "group" | "system" | "story" | "chat_offline" | "game" | "diary_entry" | "notewall" | "xiaohongshu" | "black_market_theater" | "interview_issue" | "interview_shared_issue" | "cocreate_project" | "checkphone" | "custom_app_event"; // chat sub-type: 1:1 vs Message vs group chat vs system note
     authorType?: "user" | "character" | "npc"; // who authored this entry
     postAuthorType?: "user" | "character"; // for moments: who owns the parent post
@@ -756,6 +757,21 @@ export function loadNativeTimeline(
         });
     }
 
+    // Shopping payment projections are short-term memory only and never chat messages.
+    const shoppingEntries = loadShoppingMemoryEntries(characterId, {
+        afterTimestamp: options?.afterTimestamp,
+    });
+    for (const shoppingEntry of shoppingEntries) {
+        entries.push({
+            id: shoppingEntry.id,
+            sourceApp: "shopping",
+            sourceDetail: "system",
+            authorType: "user",
+            timestamp: shoppingEntry.timestamp,
+            content: shoppingEntry.content,
+        });
+    }
+
     // ── Interview magazine projections ──
     const interviewEntries = loadInterviewMagazineProjectionEntries(characterId, {
         afterTimestamp: options?.afterTimestamp,
@@ -827,7 +843,7 @@ export function loadNativeTimeline(
 }
 
 // Fixed order — lower = further from LLM output (appears higher in prompt)
-const FEATURE_ORDER: Record<string, number> = { map: 0, game: 0.5, moments: 1, xiaohongshu: 1.5, checkphone: 1.7, story: 2, vn: 2, theater: 2.2, interview: 2.35, cocreate: 2.4, diary_entry: 2.45, notewall: 2.5, custom_app: 2.6, group_chat: 3, chat: 4, message: 4.1 };
+const FEATURE_ORDER: Record<string, number> = { map: 0, game: 0.5, moments: 1, xiaohongshu: 1.5, checkphone: 1.7, shopping: 1.8, story: 2, vn: 2, theater: 2.2, interview: 2.35, cocreate: 2.4, diary_entry: 2.45, notewall: 2.5, custom_app: 2.6, group_chat: 3, chat: 4, message: 4.1 };
 // Map appId → XML tag name for the "current feature" wrapper
 const FEATURE_TAG: Record<string, string> = {
     chat: "recent_chat",
@@ -1033,6 +1049,11 @@ export function prepareShortTermContext(
     const checkPhoneEntries = timeline.filter(e => e.sourceApp === "checkphone");
     if (checkPhoneEntries.length > 0) {
         raw.push({ tag: "recent_checkphone", order: FEATURE_ORDER.checkphone, entries: checkPhoneEntries });
+    }
+
+    const shoppingEntries = timeline.filter(e => e.sourceApp === "shopping");
+    if (shoppingEntries.length > 0) {
+        raw.push({ tag: "recent_shopping", order: FEATURE_ORDER.shopping, entries: shoppingEntries });
     }
 
     const interviewEntries = timeline.filter(e => e.sourceApp === "interview_magazine");

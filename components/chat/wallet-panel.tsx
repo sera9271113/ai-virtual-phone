@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowDownToLine, ArrowUpFromLine, CreditCard, Plus, Trash2 } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/ui";
@@ -116,7 +117,6 @@ export function WalletPanel({ onBack }: WalletPanelProps = {}) {
   const [familyLimit, setFamilyLimit] = useState("1000");
   const [familyNote, setFamilyNote] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const overlayOpen = deleteCardId !== null || deleteFamilyCardId !== null;
   const contactCharacters = useMemo(() => {
     const characters = loadCharacters();
     return loadChatContacts().map(contact => ({
@@ -156,13 +156,6 @@ export function WalletPanel({ onBack }: WalletPanelProps = {}) {
     window.addEventListener(WALLET_UPDATED_EVENT, syncWallet);
     return () => window.removeEventListener(WALLET_UPDATED_EVENT, syncWallet);
   }, []);
-
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: overlayOpen }));
-    return () => {
-      if (overlayOpen) window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: false }));
-    };
-  }, [overlayOpen]);
 
   const activeCard = useMemo(
     () => wallet.cards.find(card => card.id === activeCardId) ?? wallet.cards[0],
@@ -687,27 +680,29 @@ export function WalletPanel({ onBack }: WalletPanelProps = {}) {
         {error ? <div className="ts-12 text-[var(--c-danger)] px-1">{error}</div> : null}
       </div>
 
-      {deleteCardId ? (
-        <ConfirmDialog
-          title="删除这张银行卡？"
-          message="删除后该卡余额和流水都会从余额管理中移除。"
-          variant="danger"
-          confirmLabel="删除"
-          cancelLabel="取消"
-          onConfirm={handleDeleteCard}
-          onCancel={() => setDeleteCardId(null)}
-        />
-      ) : null}
-      {deleteFamilyCardId ? (
-        <ConfirmDialog
-          title="删除亲属卡"
-          message="删除后，聊天室中的对应亲属卡也会同步删除。"
-          confirmLabel="删除"
-          cancelLabel="取消"
-          variant="danger"
-          onConfirm={handleDeleteFamilyCard}
-          onCancel={() => setDeleteFamilyCardId(null)}
-        />
+      {typeof document !== "undefined" && (deleteCardId || deleteFamilyCardId) ? createPortal(
+        deleteCardId ? (
+          <ConfirmDialog
+            title="删除这张银行卡？"
+            message="删除后该卡余额和流水都会从余额管理中移除。"
+            variant="danger"
+            confirmLabel="删除"
+            cancelLabel="取消"
+            onConfirm={handleDeleteCard}
+            onCancel={() => setDeleteCardId(null)}
+          />
+        ) : (
+          <ConfirmDialog
+            title="删除亲属卡"
+            message="删除后，聊天室中的对应亲属卡也会同步删除。"
+            confirmLabel="删除"
+            cancelLabel="取消"
+            variant="danger"
+            onConfirm={handleDeleteFamilyCard}
+            onCancel={() => setDeleteFamilyCardId(null)}
+          />
+        ),
+        document.body,
       ) : null}
     </PageShell>
   );

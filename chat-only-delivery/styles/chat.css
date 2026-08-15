@@ -1796,7 +1796,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: #e8e8e8;
+  background: var(--c-overlay);
 }
 .chat-merge-forward-detail-dialog {
   width: min(420px, 100%);
@@ -1906,7 +1906,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: color-mix(in srgb, #000 45%, transparent);
+  background: var(--c-overlay);
 }
 .chat-forward-target-dialog {
   width: min(380px, 100%);

@@ -166,8 +166,7 @@
         .story-drawer-overlay {
           position: absolute;
           inset: 0;
-          background: var(--c-story-overlay, rgba(0, 0, 0, 0.2));
-          backdrop-filter: blur(2px);
+          background: var(--c-overlay);
           z-index: 10;
           animation: fade-in 0.2s ease;
         }

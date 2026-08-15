@@ -1693,9 +1693,7 @@
     position: absolute;
     inset: 0;
     z-index: 100;
-    background: var(--c-music-overlay);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background: var(--c-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2014,7 +2012,7 @@
     z-index: 50;
     display: flex;
     justify-content: flex-end;
-    background: var(--c-music-overlay);
+    background: var(--c-overlay);
     animation: musicFadeIn 0.2s ease-out;
 }
 

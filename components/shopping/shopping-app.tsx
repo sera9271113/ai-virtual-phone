@@ -56,6 +56,8 @@ import {
   WALLET_UPDATED_EVENT,
 } from "@/lib/wallet-storage";
 import type { WalletState } from "@/lib/wallet-types";
+import { recordShoppingPaymentEvent } from "@/lib/shopping-memory";
+import { resolveUserIdentity } from "@/lib/settings-storage";
 
 type ShoppingAppProps = {
   onClose: (isBusy?: boolean) => void;
@@ -961,14 +963,13 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
     if (paymentSource.familyCardId) {
       const familyCard = paymentResult.state.familyCards.find(card => card.id === paymentSource.familyCardId);
       if (familyCard) {
-        const chatSession = createOrGetSession(familyCard.characterId);
-        pushChatMessage({
-          sessionId: chatSession.id,
-          role: "system",
-          content: `亲属卡消费通知：用户使用你赠送的亲属卡购买了「${order.summary}」，消费 ${formatShoppingAmount(cartTotals.totalPayment)}，本月已使用 ${formatShoppingAmount(familyCard.usedAmount)} / ${formatShoppingAmount(familyCard.monthlyLimit)}。你已知道这笔消费，可结合当前语境自然回应。`,
-          mediaType: "system_instruction",
+        const userName = resolveUserIdentity(familyCard.characterId, "shopping")?.name || "用户";
+        recordShoppingPaymentEvent({
+          characterId: familyCard.characterId,
+          orderId: order.id,
+          timestamp: paymentResult.transaction.createdAt,
+          content: `亲属卡消费通知:${userName}使用你赠送的亲属卡购买了「${order.summary}」，消费${formatShoppingAmount(cartTotals.totalPayment)}，本月已使用${formatShoppingAmount(familyCard.usedAmount)}/${formatShoppingAmount(familyCard.monthlyLimit)}。`,
         });
-        window.dispatchEvent(new CustomEvent("chat-messages-updated", { detail: { sessionId: chatSession.id } }));
       }
     }
     setWalletState(paymentResult.state);
