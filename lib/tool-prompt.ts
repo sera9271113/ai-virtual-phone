@@ -20,7 +20,7 @@ export function formatToolsForPrompt(tools: EnabledTool[]): string {
     if (tools.length === 0) return "";
 
     const toolList = tools.map(t => `${t.name}: ${t.description}`).join("\n");
-    const hasSearch = tools.some(t => t.name === "搜索" || t.id === "builtin_search");
+    const hasSearch = tools.some(t => t.name === "搜索" || t.sourceId === "builtin_search");
 
     const lines = [
         "<available_actions>",
@@ -50,7 +50,7 @@ export function formatGroupToolsForPrompt(tools: EnabledTool[]): string {
     if (tools.length === 0) return "";
 
     const toolList = tools.map(t => `${t.name}: ${t.description}`).join("\n");
-    const hasSearch = tools.some(t => t.name === "搜索" || t.id === "builtin_search");
+    const hasSearch = tools.some(t => t.name === "搜索" || t.sourceId === "builtin_search");
 
     const lines = [
         "<available_actions>",

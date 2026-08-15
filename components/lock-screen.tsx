@@ -48,7 +48,7 @@ export function LockScreen({
   const [unlockFading, setUnlockFading] = useState(false); // success fade-out
   const [effectivePassword, setEffectivePassword] = useState(lockPassword);
   const [resetNotice, setResetNotice] = useState(false);
-  const resetNoticeTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const resetNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setEffectivePassword(lockPassword);
@@ -62,7 +62,7 @@ export function LockScreen({
     setShake(false);
     onPasswordReset?.("1234");
     setResetNotice(true);
-    clearTimeout(resetNoticeTimerRef.current);
+    if (resetNoticeTimerRef.current) clearTimeout(resetNoticeTimerRef.current);
     resetNoticeTimerRef.current = setTimeout(() => setResetNotice(false), 2000);
   }, [onPasswordReset]);
 

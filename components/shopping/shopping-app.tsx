@@ -968,6 +968,7 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
           content: `亲属卡消费通知：用户使用你赠送的亲属卡购买了「${order.summary}」，消费 ${formatShoppingAmount(cartTotals.totalPayment)}，本月已使用 ${formatShoppingAmount(familyCard.usedAmount)} / ${formatShoppingAmount(familyCard.monthlyLimit)}。你已知道这笔消费，可结合当前语境自然回应。`,
           mediaType: "system_instruction",
         });
+        window.dispatchEvent(new CustomEvent("chat-messages-updated", { detail: { sessionId: chatSession.id } }));
       }
     }
     setWalletState(paymentResult.state);

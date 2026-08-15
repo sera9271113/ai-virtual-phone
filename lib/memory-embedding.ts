@@ -100,11 +100,11 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 function normalizeImportance(importance: number | undefined): number {
-    if (!Number.isFinite(importance)) return 0;
-    if (importance <= 1) {
-        return Math.max(0, Math.min(1, importance));
+    const normalizedImportance = typeof importance === "number" && Number.isFinite(importance) ? importance : 0;
+    if (normalizedImportance <= 1) {
+        return Math.max(0, Math.min(1, normalizedImportance));
     }
-    return Math.max(1, Math.min(10, importance)) / 10;
+    return Math.max(1, Math.min(10, normalizedImportance)) / 10;
 }
 
 export function getMemoryStatus(entry: MemoryEntry): MemoryStatus {

@@ -559,7 +559,7 @@ export function payWithWalletAccount(input: WalletPaymentInput): WalletPaymentRe
 
   if (input.familyCardId) {
     const familyCard = current.familyCards.find(card => card.id === input.familyCardId);
-    if (!familyCard || familyCard.status !== "active" || familyCard.direction !== "granted") {
+    if (!familyCard || familyCard.status !== "active" || familyCard.direction !== "requested") {
       return { ok: false, state: current, error: "这张亲属卡当前不可用。" };
     }
     const remaining = normalizeMoney(familyCard.monthlyLimit - familyCard.usedAmount);

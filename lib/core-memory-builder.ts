@@ -298,7 +298,7 @@ export async function runCoreMemoryPipeline(
             .replace(/\{\{longTermMemories\}\}/gi, eventsText);
 
         const result = await simpleLLMCall(
-            apiConfig,
+            apiConfig as ApiConfig,
             [{ role: "user", content: prompt }],
             { temperature: 0.3 },
         );
@@ -314,7 +314,7 @@ export async function runCoreMemoryPipeline(
         // Estimate importance/valence/arousal for the core summary. Core memories are
         // already pre-filtered to be significant, so importance has a floor of 7 (still
         // lets truly pivotal events like marriage/breakup score higher than routine ones).
-        const signals = await estimateMemoryEmotion(summary, apiConfig, { minImportance: 7, fallbackImportance: 9 });
+        const signals = await estimateMemoryEmotion(summary, apiConfig as ApiConfig, { minImportance: 7, fallbackImportance: 9 });
 
         // Per-domain dedup via cosine similarity against existing core memories in the same domain.
         let domainEmbedding: number[] | undefined;

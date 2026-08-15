@@ -5,7 +5,7 @@
 
 import { useLayoutEffect, useRef } from "react";
 import type { Character } from "@/lib/character-types";
-import { CharacterCard } from "./character-card";
+import { CharacterCard } from "./character/character-card";
 
 export function CharacterCarousel({
   characters,
@@ -107,8 +107,8 @@ export function CharacterCarousel({
                 const card = scrollRef.current?.children[i] as HTMLElement | undefined;
                 card?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
               }}
-              onEdit={(e) => onEditCharacter?.(char.id, e)}
-              onMenu={(e) => onMenuCharacter?.(char.id, e)}
+              onEdit={(e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => onEditCharacter?.(char.id, e)}
+              onMenu={(e: React.MouseEvent<HTMLButtonElement>) => onMenuCharacter?.(char.id, e)}
             />
           </div>
         ))}

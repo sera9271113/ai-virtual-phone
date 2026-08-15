@@ -652,7 +652,7 @@ export function WalletPanel({ onBack }: WalletPanelProps = {}) {
         <section className="wallet-section px-4 py-2 flex flex-col">
           <div className="py-3 flex items-center justify-between">
             <div className="flex items-center gap-2.5"><FolderDollarIcon /><h2 className="ts-15 font-semibold">Transactions</h2></div>
-            <span className="ts-11 text-[#999]">全部 {wallet.transactions.length} 笔</span>
+            <span className="ts-11 text-[#999]">最多显示 10 笔</span>
           </div>
           {recentTransactions.length === 0 ? (
             <div className="py-8 text-center ts-12 text-[#888]">暂无流水</div>
@@ -701,10 +701,10 @@ export function WalletPanel({ onBack }: WalletPanelProps = {}) {
       {deleteFamilyCardId ? (
         <ConfirmDialog
           title="删除亲属卡"
-          description="删除后，聊天室中的对应亲属卡也会同步删除。"
-          confirmText="删除"
-          cancelText="取消"
-          danger
+          message="删除后，聊天室中的对应亲属卡也会同步删除。"
+          confirmLabel="删除"
+          cancelLabel="取消"
+          variant="danger"
           onConfirm={handleDeleteFamilyCard}
           onCancel={() => setDeleteFamilyCardId(null)}
         />

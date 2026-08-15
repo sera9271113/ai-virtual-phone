@@ -20,6 +20,15 @@ type ParsedChat = {
     innerMonologue?: string;
 };
 
+type ParsedMessage = {
+    type: "message";
+    id: string;
+    timestamp: string;
+    sender: string;
+    isUser: boolean;
+    message: string;
+};
+
 type ParsedGroupChat = {
     type: "group";
     id: string;
@@ -68,7 +77,7 @@ type ParsedProjection = {
     message: string;
 };
 
-type ParsedEntry = ParsedChat | ParsedGroupChat | ParsedMoment | ParsedSystem | ParsedProjection;
+type ParsedEntry = ParsedChat | ParsedMessage | ParsedGroupChat | ParsedMoment | ParsedSystem | ParsedProjection;
 
 type TimelineCluster = {
     id: string;
@@ -141,6 +150,21 @@ function parseEntry(evt: NativeTimelineEntry, userName: string): ParsedEntry | n
                 sender: m[2],
                 isUser: m[2] === userName,
                 message: m[3],
+            };
+        }
+    }
+
+    // Message/SMS: [短信 ...] Sender: message
+    if (evt.sourceApp === "message" && evt.sourceDetail === "message") {
+        const m = content.match(/^\[短信(?: [^\]]+)?\] (.+?): ([\s\S]*)$/);
+        if (m) {
+            return {
+                type: "message",
+                id: evt.id,
+                timestamp: evt.timestamp,
+                sender: m[1],
+                isUser: m[1].startsWith("用户"),
+                message: m[2],
             };
         }
     }
@@ -293,6 +317,9 @@ function buildCluster(entries: ParsedEntry[]): TimelineCluster {
         if (e.type === "chat") {
             tagSet.add("聊天");
             pool.push(e.message);
+        } else if (e.type === "message") {
+            tagSet.add("短信");
+            pool.push(e.message);
         } else if (e.type === "group") {
             tagSet.add("群聊");
             pool.push(e.message);
@@ -413,6 +440,7 @@ function fmtDate(ts: string): string {
 function tagVariant(tag: string): "success" | "purple" | "action" | "warning" {
     return tag === "聊天" ? "success"
         : tag === "群聊" ? "purple"
+            : tag === "短信" ? "warning"
             : tag === "剧情" || tag === "漫卷" || tag === "冒险" || tag === "线下" ? "action"
                 : "warning";
 }
@@ -458,7 +486,7 @@ function ClusterDetail({ cluster }: { cluster: TimelineCluster }) {
                                             </div>
                                         );
                                     }
-                                    const e = entry as ParsedChat | ParsedGroupChat;
+                                    const e = entry as ParsedChat | ParsedMessage | ParsedGroupChat;
                                     // Hide [音乐:xxx] messages
                                     if (/^\[音乐[:：]/.test(e.message)) return null;
                                     // Music share -> card

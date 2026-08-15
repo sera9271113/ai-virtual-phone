@@ -471,8 +471,8 @@ function CharListView({
 
   /** 「生成配角」确认落库（支持一批）：落库逻辑与聊天名片建档共用 lib/npc-generator 的 materialize */
   function handleNpcGenerated(results: GeneratedSupportingCharacter[], targetId: string, allowAutoPost: boolean) {
-    const newChars = results.map((result, index) =>
-      materializeSupportingCharacter(result, targetId, { allowAutoPost, placementIndex: index })
+    const newChars = results.map(result =>
+      materializeSupportingCharacter(result, targetId, { allowAutoPost })
     );
     // materialize 直接写存储；这里回读刷新 React 态（onUpdateChars 会再存一次同数据，无害）
     onUpdateChars(loadCharacters());

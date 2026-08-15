@@ -60,6 +60,11 @@ export type MemoryMetadata = {
     timeSpan?: string;
     sourceSessionIds?: string[];
     origin?: string;
+    appId?: string;
+    appName?: string;
+    reason?: string;
+    sessionId?: string;
+    approvedByUser?: boolean;
     editedByUser?: boolean;
     domain?: MemoryDomain;
     domainConfidence?: number;   // 低于阈值（建议0.6）时前端按"未分类"兜底展示

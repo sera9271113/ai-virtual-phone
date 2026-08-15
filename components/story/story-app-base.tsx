@@ -996,20 +996,17 @@ export function StoryAppBase({ characterId, onClose, onBack }: StoryAppProps) {
   function handleStoryDelete(msgId: string) {
     deleteStoryMessage(msgId);
     setMessages(prev => prev.filter(m => m.id !== msgId));
-    setActiveMessageId(null);
     setStorageVersion(v => v + 1);
   }
   function handleStoryDeleteFrom(msgId: string) {
     deleteStoryMessagesFrom(activeSessionId, msgId);
     setMessages(prev => { const idx = prev.findIndex(m => m.id === msgId); return idx >= 0 ? prev.slice(0, idx) : prev; });
-    setActiveMessageId(null);
     setStorageVersion(v => v + 1);
   }
   function handleStoryEditStart(msg: StoryMessage) {
     setEditingMessageId(msg.id);
     setEditingContent(msg.rawContent); // 仅作为非受控 textarea 的初始值
     editingDraftRef.current = msg.rawContent;
-    setActiveMessageId(null);
   }
   function handleStoryEditSave() {
     const draft = editingDraftRef.current;
@@ -1045,7 +1042,6 @@ export function StoryAppBase({ characterId, onClose, onBack }: StoryAppProps) {
     };
     if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(text).catch(fallbackCopy); }
     else { fallbackCopy(); }
-    setActiveMessageId(null);
   }
   async function handleStoryRetry(msgId: string) {
     const msgIndex = messages.findIndex(m => m.id === msgId);
@@ -1062,7 +1058,6 @@ export function StoryAppBase({ characterId, onClose, onBack }: StoryAppProps) {
       deleteStoryMessagesFrom(activeSessionId, firstDiscardedMessage.id);
     }
     setMessages(contextMessages);
-    setActiveMessageId(null);
     setStorageVersion(v => v + 1);
     setIsGenerating(true);
     setStreamingText("");

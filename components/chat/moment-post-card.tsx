@@ -142,7 +142,6 @@ export function MomentPostCard({ post, onUpdate, onRequestDelete, onOpenCommentC
         setPostPhotoDescDraft(post.photoDescription || "");
         setPostUseReferenceDraft(post.photoUseReferenceImage === true);
         setPostLocationDraft(post.location || "");
-        setShowPostActions(false);
         setEditingPostOpen(true);
     };
 

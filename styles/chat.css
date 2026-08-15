@@ -1562,7 +1562,7 @@
   right: 0;
   z-index: 10;
   padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-  background: transparent;
+  background: #ffffff;
 }
 
 .chat-input-bar .chat-input-row {
@@ -1571,14 +1571,37 @@
   gap: 8px;
 }
 
+.chat-input-compose {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  max-height: 120px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 4px 1px 8px;
+  border: 1px solid #c9cbd1;
+  border-radius: 20px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
 .chat-input-bar .chat-input-textarea {
   flex: 1;
   min-width: 0;
   width: auto;
+  box-sizing: border-box;
   margin: 0;
-  border: 1px solid #c9cbd1;
-  border-radius: var(--ui-radius-card);
-  background: #ffffff !important;
+  padding: 6px 6px;
+  border: none;
+  border-radius: 0;
+  background: transparent !important;
+  align-self: stretch;
+  max-height: 112px;
+  overflow-y: auto;
+  scroll-padding-block: 6px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -1588,8 +1611,8 @@
    icon tinted light gray. */
 .chat-input-glass-btn {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1599,9 +1622,14 @@
   transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
-.chat-input-glass-btn svg {
-  width: 26px;
-  height: 26px;
+.chat-input-plus-btn svg {
+  width: 36px;
+  height: 36px;
+}
+
+.chat-input-plus-btn {
+  color: var(--c-text);
+  opacity: 0.62;
 }
 
 .chat-input-glass-btn:active {
@@ -1610,6 +1638,49 @@
 
 .chat-input-glass-btn:disabled {
   opacity: 0.35;
+}
+
+.chat-input-send-btn {
+  flex-shrink: 0;
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--c-text);
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.chat-input-send-btn:active {
+  transform: scale(0.92);
+}
+
+.chat-input-send-btn:disabled {
+  opacity: 0.35;
+}
+
+.chat-input-ai-btn {
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #111111;
+  color: #ffffff;
+}
+
+.chat-input-ai-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.chat-input-bar .chat-input-textarea::placeholder {
+  color: #b7b9bf;
 }
 
 .chat-theater-mode-strip {
@@ -4040,6 +4111,7 @@
 
 /* ── Input textarea ── */
 .chat-input-textarea {
+  box-sizing: border-box;
   border: none;
   outline: none;
   font-size: calc(14.4px*var(--app-text-scale,1));

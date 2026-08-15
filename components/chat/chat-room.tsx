@@ -41,7 +41,7 @@ import { applyDisplayRegex, applyEditRegex } from "@/lib/llm-prompt-assembler";
 import { scheduleFollowUp, cancelFollowUp } from "@/lib/follow-up-service";
 import { PENDING_REPLY_PREFIX } from "@/lib/friend-request-engine";
 import type { UserIdentity } from "@/components/settings/user-identity";
-import { AlertCircle, ArrowBigDownDash, ArrowBigUpDash, Blocks, Check, Trash2, User, ChevronLeft, Clapperboard, ClipboardPenLine, Forward, Gift, Image as ImageIcon, Loader2, MapPin, Menu, Mic, Phone, Sticker, Type, Video, X } from "lucide-react";
+import { AlertCircle, Blocks, Check, Trash2, User, ChevronLeft, Clapperboard, ClipboardPenLine, Forward, Gift, Image as ImageIcon, Loader2, MapPin, Menu, Mic, Phone, Type, Video, X } from "lucide-react";
 import { setDebugChatState } from "@/lib/debug-store";
 import { scopeSessionCSS } from "@/lib/css-scoper";
 import { setChatActive } from "@/lib/music-action-queue";
@@ -641,7 +641,8 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
             const ta = textareaRef.current;
             if (!ta) return;
             ta.style.height = "auto";
-            ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
+            ta.style.height = Math.min(ta.scrollHeight, 112) + "px";
+            ta.scrollTop = ta.scrollHeight;
             if (options?.focus !== false) ta.focus();
         });
     }, []);
@@ -673,7 +674,7 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
     const plusIconActiveColor = "var(--c-icon-active)";
     const plusMenuItems = [
         // ── 第一页 ──
-        { icon: <Sticker size={30} strokeWidth={1.5} color={plusIconColor} />, label: "贴纸", onClick: onToggleStickerPanel },
+        { icon: <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={plusIconColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M9 10l.01 0" /><path d="M15 10l.01 0" /><path d="M9.5 15a3.5 3.5 0 0 0 5 0" /></svg>, label: "贴纸", onClick: onToggleStickerPanel },
         { icon: <ImageIcon size={30} strokeWidth={1.5} color={plusIconColor} />, label: "照片墙", onClick: () => onOpenRichModal("photo") },
         { icon: <Type size={30} strokeWidth={1.5} color={plusIconColor} />, label: "文字图片", onClick: () => onOpenRichModal("text_photo") },
         { icon: <Mic size={30} strokeWidth={1.5} color={plusIconColor} />, label: "语音条", onClick: () => onOpenRichModal("voice_msg") },
@@ -738,69 +739,81 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
                 <button
                     onClick={onTogglePlusMenu}
                     disabled={plusMenuLocked}
-                    className="chat-input-glass-btn"
+                    className="chat-input-glass-btn chat-input-plus-btn"
                     aria-label="更多"
                     title="更多"
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>
                 </button>
 
-                <textarea
-                    ref={textareaRef}
-                    rows={1}
-                    value={inputText}
-                    onChange={e => {
-                        setInputText(e.target.value);
-                        e.target.style.height = "auto";
-                        e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
-                    }}
-                    onFocus={(e) => {
-                        if (panelOpen) {
-                            e.target.blur();
-                            onClosePanels();
-                            const target = e.target as HTMLTextAreaElement;
-                            requestAnimationFrame(() => requestAnimationFrame(() => target.focus()));
-                        }
-                    }}
-                    onKeyDown={e => {
-                        if (shouldSendChatInputOnEnter(e, enterToSendEnabled)) {
-                            e.preventDefault();
-                            handleSubmit();
-                        }
-                    }}
-                    enterKeyHint={enterToSendEnabled ? "send" : "enter"}
-                    className="chat-input-textarea"
-                    disabled={textLocked}
-                    placeholder={textLocked
-                        ? (isSpectator ? "围观中，你不在这个群里" : `禁言中，剩余${Math.ceil(muteRemainingMs / 60000)}分钟`)
-                        : (theaterMode ? "写下番外指令..." : (muteRemainingMs > 0 ? "禁言中，番外指令模式下仍可发送" : undefined))}
-                />
+                <div className="chat-input-compose">
+                    <textarea
+                        ref={textareaRef}
+                        rows={1}
+                        value={inputText}
+                        onChange={e => {
+                            setInputText(e.target.value);
+                            e.target.style.height = "auto";
+                            e.target.style.height = Math.min(e.target.scrollHeight, 112) + "px";
+                            e.target.scrollTop = e.target.scrollHeight;
+                        }}
+                        onFocus={(e) => {
+                            if (panelOpen) {
+                                e.target.blur();
+                                onClosePanels();
+                                const target = e.target as HTMLTextAreaElement;
+                                requestAnimationFrame(() => requestAnimationFrame(() => target.focus()));
+                            }
+                        }}
+                        onKeyDown={e => {
+                            if (shouldSendChatInputOnEnter(e, enterToSendEnabled)) {
+                                e.preventDefault();
+                                handleSubmit();
+                            }
+                        }}
+                        enterKeyHint={enterToSendEnabled ? "send" : "enter"}
+                        className="chat-input-textarea"
+                        disabled={textLocked}
+                        placeholder={textLocked
+                            ? (isSpectator ? "围观中，你不在这个群里" : `禁言中，剩余${Math.ceil(muteRemainingMs / 60000)}分钟`)
+                            : (theaterMode ? "写下番外指令..." : (muteRemainingMs > 0 ? "禁言中，番外指令模式下仍可发送" : "Type to chat..."))}
+                    />
 
-                <button
-                    onClick={handleSubmit}
-                    disabled={!isGenerating && (textLocked || !inputText.trim())}
-                    className="chat-input-glass-btn chat-input-send-btn"
-                    aria-label={isGenerating ? "停止本轮生成" : "发送"}
-                    title={isGenerating ? "停止本轮生成" : "发送"}
-                >
-                    {isGenerating ? (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <circle cx="12" cy="12" r="10" />
-                            <rect x="9" y="9" width="6" height="6" rx="1" />
-                        </svg>
-                    ) : (
-                        <ArrowBigUpDash size={25} strokeWidth={1.5} aria-hidden="true" />
-                    )}
-                </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={!isGenerating && (textLocked || !inputText.trim())}
+                        className="chat-input-send-btn"
+                        aria-label={isGenerating ? "停止本轮生成" : "发送"}
+                        title={isGenerating ? "停止本轮生成" : "发送"}
+                    >
+                        {isGenerating ? (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10" />
+                                <rect x="9" y="9" width="6" height="6" rx="1" />
+                            </svg>
+                        ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M21 3 10 14" />
+                                <path d="m21 3-7 18-4-7-7-4Z" />
+                            </svg>
+                        )}
+                    </button>
+                </div>
 
                 {!isGenerating && (
                     <button
-                        className="chat-input-glass-btn"
+                        className="chat-input-glass-btn chat-input-ai-btn"
                         onClick={() => { onTriggerAIResponse(); onClosePanels(); }}
                         aria-label="触发AI回复"
                         title="触发AI回复"
                     >
-                        <ArrowBigDownDash size={18} strokeWidth={1.5} />
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                            <path d="M4 13v-2" />
+                            <path d="M8 16V8" />
+                            <path d="M12 19V5" />
+                            <path d="M16 16V8" />
+                            <path d="M20 13v-2" />
+                        </svg>
                     </button>
                 )}
             </div>
@@ -871,7 +884,8 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
         const ta = textareaRef.current;
         if (!ta) return;
         ta.style.height = "auto";
-        ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
+            ta.style.height = Math.min(ta.scrollHeight, 112) + "px";
+            ta.scrollTop = ta.scrollHeight;
     }, []);
 
     const setTextAndResize = useCallback((text: string) => {
@@ -909,44 +923,50 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
     return (
         <div className="chat-input-bar chat-room-main-pane flex flex-col" data-ui="input">
             <div className="chat-input-row">
-                <textarea
-                    ref={textareaRef}
-                    rows={1}
-                    value={inputText}
-                    onChange={e => {
-                        inputTextRef.current = e.target.value;
-                        setInputText(e.target.value);
-                        e.target.style.height = "auto";
-                        e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
-                    }}
-                    onKeyDown={e => {
-                        if (shouldSendChatInputOnEnter(e, enterToSendEnabled)) {
-                            e.preventDefault();
-                            handleSubmit();
-                        }
-                    }}
-                    enterKeyHint={enterToSendEnabled ? "send" : "enter"}
-                    className="chat-input-textarea"
-                    disabled={isSpectator}
-                    placeholder={isSpectator ? "围观中，点右侧按钮推进他们的线下互动" : undefined}
-                />
-                <button
-                    type="button"
-                    onClick={() => { if (isOfflineGenerating) onStopGeneration(); else handleSubmit(); }}
-                    disabled={!isOfflineGenerating && !isSpectator && !inputText.trim()}
-                    className="chat-input-glass-btn chat-input-send-btn"
-                    aria-label={isOfflineGenerating ? "停止线下生成" : "发送"}
-                    title={isOfflineGenerating ? "停止线下生成" : "发送"}
-                >
-                    {isOfflineGenerating ? (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <circle cx="12" cy="12" r="10" />
-                            <rect x="9" y="9" width="6" height="6" rx="1" />
-                        </svg>
-                    ) : (
-                        <ArrowBigUpDash size={25} strokeWidth={1.5} aria-hidden="true" />
-                    )}
-                </button>
+                <div className="chat-input-compose">
+                    <textarea
+                        ref={textareaRef}
+                        rows={1}
+                        value={inputText}
+                        onChange={e => {
+                            inputTextRef.current = e.target.value;
+                            setInputText(e.target.value);
+                            e.target.style.height = "auto";
+                            e.target.style.height = Math.min(e.target.scrollHeight, 112) + "px";
+                            e.target.scrollTop = e.target.scrollHeight;
+                        }}
+                        onKeyDown={e => {
+                            if (shouldSendChatInputOnEnter(e, enterToSendEnabled)) {
+                                e.preventDefault();
+                                handleSubmit();
+                            }
+                        }}
+                        enterKeyHint={enterToSendEnabled ? "send" : "enter"}
+                        className="chat-input-textarea"
+                        disabled={isSpectator}
+                        placeholder={isSpectator ? "围观中，点右侧按钮推进他们的线下互动" : "Type to chat..."}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => { if (isOfflineGenerating) onStopGeneration(); else handleSubmit(); }}
+                        disabled={!isOfflineGenerating && !isSpectator && !inputText.trim()}
+                        className="chat-input-send-btn"
+                        aria-label={isOfflineGenerating ? "停止线下生成" : "发送"}
+                        title={isOfflineGenerating ? "停止线下生成" : "发送"}
+                    >
+                        {isOfflineGenerating ? (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10" />
+                                <rect x="9" y="9" width="6" height="6" rx="1" />
+                            </svg>
+                        ) : (
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M21 3 10 14" />
+                                <path d="m21 3-7 18-4-7-7-4Z" />
+                            </svg>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );

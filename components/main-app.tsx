@@ -268,7 +268,7 @@ export function MainApp() {
   const [splashDismissed, setSplashDismissed] = useState(false);
   // Smooth unlock transition: keep lock screen mounted during fade-out
   const [unlockPhase, setUnlockPhase] = useState<"locked" | "fading" | "done">("locked");
-  const unlockTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const unlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleUnlock = useCallback(() => {
     setSplashDismissed(true);
