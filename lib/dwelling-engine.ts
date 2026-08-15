@@ -19,6 +19,7 @@ import { formatCoreMemories, formatLongTermMemories } from "./memory-injector";
 import { prepareShortTermContext } from "./short-term-assembler";
 import { buildCalendarScheduleMarker } from "./calendar-storage";
 import { getWeekStartIso } from "./calendar-utils";
+import { jsonrepair } from "jsonrepair";
 
 // ── Resolve configs (same pattern as story-engine) ──
 
@@ -168,14 +169,21 @@ function extractJSON(text: string): unknown | null {
     s = s.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "").trim();
     s = s.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "").trim();
 
+    const tryParse = (candidate: string): unknown | null => {
+        try { return JSON.parse(candidate); } catch { /* try repair below */ }
+        try { return JSON.parse(jsonrepair(candidate)); } catch { return null; }
+    };
+
     // Try markdown fence first
     const fenceMatch = s.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (fenceMatch) {
-        try { return JSON.parse(fenceMatch[1].trim()); } catch { /* fall through */ }
+        const parsed = tryParse(fenceMatch[1].trim());
+        if (parsed !== null) return parsed;
     }
 
     // Try parsing as-is
-    try { return JSON.parse(s); } catch { /* fall through */ }
+    const direct = tryParse(s);
+    if (direct !== null) return direct;
 
     // Try to find the outermost { ... } or [ ... ]
     const braceStart = s.indexOf("{");
@@ -187,7 +195,8 @@ function extractJSON(text: string): unknown | null {
         // Find matching close from the end
         const end = s.lastIndexOf(closeChar);
         if (end > start) {
-            try { return JSON.parse(s.slice(start, end + 1)); } catch { /* fall through */ }
+            const extracted = tryParse(s.slice(start, end + 1));
+            if (extracted !== null) return extracted;
         }
     }
 
@@ -341,6 +350,19 @@ async function generateDwellingLayoutOnce(
         // Items mode: merge new items into old layout structure
         if (mode === "items" && oldCached) {
             const oldLayout = structuredClone(oldCached.layout);
+            const returnedRooms = new Map(layout.rooms.map(room => [room.id, room]));
+            for (const oldRoom of oldLayout.rooms) {
+                const returnedRoom = returnedRooms.get(oldRoom.id);
+                if (!returnedRoom) {
+                    return { layout: null, error: `物品刷新返回不完整：缺少房间「${oldRoom.name}」` };
+                }
+                const returnedFurnitureIds = new Set(returnedRoom.furniture.map(furniture => furniture.id));
+                for (const oldFurniture of oldRoom.furniture) {
+                    if (!returnedFurnitureIds.has(oldFurniture.id)) {
+                        return { layout: null, error: `物品刷新返回不完整：缺少「${oldRoom.name}」中的家具「${oldFurniture.label}」` };
+                    }
+                }
+            }
             const newItemsMap = new Map<string, typeof layout.rooms[0]["furniture"][0]["items"]>();
             for (const room of layout.rooms) {
                 for (const f of room.furniture) {
