@@ -19,8 +19,9 @@ import type { UserIdentity } from "@/components/settings/user-identity";
 import { scopeSessionCSS } from "@/lib/css-scoper";
 import { kvGet } from "@/lib/kv-db";
 import { formatXiaohongshuShareForPrompt, type ChatSharePayload } from "@/lib/chat-share";
-import { CHAT_OPEN_SESSION_EVENT, CHAT_OPEN_ADD_CONTACT_EVENT } from "@/lib/chat-notification-events";
+import { CHAT_OPEN_SESSION_EVENT, CHAT_OPEN_ADD_CONTACT_EVENT, CHAT_OPEN_MESSAGE_EVENT } from "@/lib/chat-notification-events";
 import { getMascotSettingsSnapshot } from "@/lib/mascot-settings";
+import { ensureMessageReplyListener } from "@/lib/message-reply-service";
 
 type TabKey = "messages" | "contacts" | "message" | "feeds" | "wallet" | "settings";
 
@@ -59,10 +60,26 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
     const [dbReady, setDbReady] = useState(false);
     const [hideTabBar, setHideTabBar] = useState(false);
     const [messageThreadOpen, setMessageThreadOpen] = useState(false);
+    const [pendingMessageCharacterId, setPendingMessageCharacterId] = useState<string | null>(null);
     // 左侧导航栏头像
     const [identity, setIdentity] = useState<UserIdentity | null>(null);
     useEffect(() => {
         setIdentity(resolveUserIdentity());
+    }, []);
+
+    useEffect(() => ensureMessageReplyListener(), []);
+
+    useEffect(() => {
+        const handler = (event: Event) => {
+            const characterId = (event as CustomEvent<{ characterId?: string }>).detail?.characterId;
+            if (!characterId) return;
+            setActiveSession(null);
+            setActiveMascot(false);
+            setPendingMessageCharacterId(characterId);
+            setActiveTab("message");
+        };
+        window.addEventListener(CHAT_OPEN_MESSAGE_EVENT, handler);
+        return () => window.removeEventListener(CHAT_OPEN_MESSAGE_EVENT, handler);
     }, []);
 
     // Hydrate IndexedDB → in-memory caches on mount
@@ -376,7 +393,13 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
                             }}
                         />
                     )}
-                    {activeTab === "message" && <MessagePanel onThreadChange={setMessageThreadOpen} />}
+                    {activeTab === "message" && (
+                        <MessagePanel
+                            initialCharacterId={pendingMessageCharacterId}
+                            onInitialCharacterConsumed={() => setPendingMessageCharacterId(null)}
+                            onThreadChange={setMessageThreadOpen}
+                        />
+                    )}
                     {activeTab === "feeds" && <MomentsFeed />}
                     {activeTab === "wallet" && <WalletPanel />}
                     {activeTab === "settings" && <UserProfilePanel />}

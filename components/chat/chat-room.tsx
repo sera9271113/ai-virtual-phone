@@ -3176,6 +3176,12 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
         if (!session.isGroup && isCurrentSessionBlacklisted()) {
             const messageHistory = loadMessageEntries(session.contactId);
             const messageUserName = resolveUserIdentity(session.contactId, "message")?.name || userIdentity?.name || "用户";
+            const messageReplyNotice = pushChatMessage({
+                sessionId: session.id,
+                role: "system",
+                content: `${character?.name || "角色"}正在通过Message回复`,
+            });
+            setMessages(prev => [...prev, messageReplyNotice]);
             const messageContext: ChatMessage = {
                 id: `message-blacklist-context-${session.id}`,
                 sessionId: session.id,

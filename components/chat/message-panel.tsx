@@ -2,11 +2,9 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import { CheckCheck, Plus } from "lucide-react";
-import { generateChatCompletion, flattenCompletionResult } from "@/lib/chat-engine";
-import { loadChatSessions, type ChatMessage, type ChatSession } from "@/lib/chat-storage";
+import { loadChatSessions } from "@/lib/chat-storage";
 import { loadCharacters } from "@/lib/character-storage";
 import { resolveUserIdentity } from "@/lib/settings-storage";
-import { parseAIResponse } from "@/lib/rich-message-parser";
 import {
     loadMessageEntries,
     loadMessageThreads,
@@ -17,6 +15,12 @@ import {
     updateMessageEntry,
     type MessageEntry,
 } from "@/lib/message-storage";
+import {
+    isMessageReplyGenerating,
+    MESSAGE_REPLY_STATE_EVENT,
+    requestMessageReply,
+    stopMessageReply,
+} from "@/lib/message-reply-service";
 import { ChatFallbackAvatar } from "./chat-fallback-avatar";
 
 function formatMessageDate(value: string): string {
@@ -49,22 +53,13 @@ function getMessageDateKey(value: string): string {
     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
-function toChatHistory(session: ChatSession, entries: MessageEntry[]): ChatMessage[] {
-    return entries.map(entry => ({
-        id: entry.id,
-        sessionId: session.id,
-        role: entry.role,
-        content: entry.content,
-        status: "sent",
-        createdAt: entry.createdAt,
-    }));
-}
-
 type MessagePanelProps = {
+    initialCharacterId?: string | null;
+    onInitialCharacterConsumed?: () => void;
     onThreadChange?: (hasThread: boolean) => void;
 };
 
-export function MessagePanel({ onThreadChange }: MessagePanelProps) {
+export function MessagePanel({ initialCharacterId, onInitialCharacterConsumed, onThreadChange }: MessagePanelProps) {
     const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [entries, setEntries] = useState<MessageEntry[]>([]);
@@ -78,9 +73,9 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
     const [version, setVersion] = useState(0);
     const bottomRef = useRef<HTMLDivElement>(null);
     const composerRef = useRef<HTMLTextAreaElement>(null);
-    const generationControllerRef = useRef<AbortController | null>(null);
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const longPressTriggeredRef = useRef(false);
+    const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
 
     const sessions = loadChatSessions().filter(session => !session.isGroup);
     const characters = loadCharacters();
@@ -98,6 +93,12 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
     const userName = selectedCharacterId ? resolveUserIdentity(selectedCharacterId, "message")?.name || "用户" : "用户";
 
     useEffect(() => {
+        if (!initialCharacterId) return;
+        setSelectedCharacterId(initialCharacterId);
+        onInitialCharacterConsumed?.();
+    }, [initialCharacterId, onInitialCharacterConsumed]);
+
+    useEffect(() => {
         if (!selectedCharacterId) return;
         setEntries(loadMessageEntries(selectedCharacterId));
     }, [selectedCharacterId, version]);
@@ -108,9 +109,15 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
 
     useEffect(() => {
         const handleThreadUpdated = () => setVersion(current => current + 1);
+        const handleReplyStateUpdated = () => setIsGenerating(isMessageReplyGenerating(selectedCharacterId));
         window.addEventListener("message-thread-updated", handleThreadUpdated);
-        return () => window.removeEventListener("message-thread-updated", handleThreadUpdated);
-    }, []);
+        window.addEventListener(MESSAGE_REPLY_STATE_EVENT, handleReplyStateUpdated);
+        setIsGenerating(isMessageReplyGenerating(selectedCharacterId));
+        return () => {
+            window.removeEventListener("message-thread-updated", handleThreadUpdated);
+            window.removeEventListener(MESSAGE_REPLY_STATE_EVENT, handleReplyStateUpdated);
+        };
+    }, [selectedCharacterId]);
 
     useEffect(() => {
         onThreadChange?.(Boolean(selectedCharacterId));
@@ -130,75 +137,13 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [activeEntryId]);
 
-    const requestReply = async (history: MessageEntry[], targetCharacterId = selectedCharacterId) => {
-        const targetSession = targetCharacterId
-            ? loadChatSessions().find(session => session.contactId === targetCharacterId && !session.isGroup)
-            : undefined;
-        const targetCharacter = targetCharacterId ? characters.find(character => character.id === targetCharacterId) : undefined;
-        if (!targetCharacterId || !targetSession || isGenerating) return;
-        const controller = new AbortController();
-        generationControllerRef.current = controller;
-        setIsGenerating(true);
-
-        try {
-            const blacklistContext: ChatMessage = {
-                id: `message-blacklist-context-${targetSession.id}`,
-                sessionId: targetSession.id,
-                role: "system",
-                content: targetSession.isBlacklisted
-                    ? `系统状态：当前渠道是 Message 短信。${resolveUserIdentity(targetCharacterId, "message")?.name || "用户"}已将你在微信 Chat 中拉黑，因此你不能在微信中回复；你仍可以通过 Message 联系${resolveUserIdentity(targetCharacterId, "message")?.name || "用户"}。你是${targetCharacter?.name || "角色"}，对方是${resolveUserIdentity(targetCharacterId, "message")?.name || "用户"}。请记住这个渠道边界，并自然回应自己被拉黑这件事。`
-                    : `系统状态：当前渠道是 Message 短信，不是微信 Chat。你是${targetCharacter?.name || "角色"}，对方是${resolveUserIdentity(targetCharacterId, "message")?.name || "用户"}。微信聊天记录与短信记录属于同一关系的不同渠道，不能把短信误认为微信消息，也不能遗忘刚才在微信中约定转到 Message。`,
-                status: "sent",
-                createdAt: new Date().toISOString(),
-            };
-            const result = await generateChatCompletion(
-                targetSession,
-                [blacklistContext, ...toChatHistory(targetSession, history)],
-                { appTags: ["chat", "text", "message"], excludeMessageEntries: true, signal: controller.signal },
-            );
-            const parsed = parseAIResponse(flattenCompletionResult(result), []);
-            const texts = parsed.parts
-                .filter(part => !part.mediaType && part.content.trim())
-                .map(part => part.content.trim());
-            const reply = texts.join("\n\n").trim();
-            if (reply) {
-                const assistantEntry = pushMessageEntry({
-                    characterId: targetCharacterId,
-                    role: "assistant",
-                    content: reply,
-                });
-                if (selectedCharacterId === targetCharacterId) {
-                    setEntries(current => [...current, assistantEntry]);
-                    setVersion(current => current + 1);
-                }
-                window.dispatchEvent(new CustomEvent("message-thread-updated", { detail: { characterId: targetCharacterId } }));
-            }
-        } catch (error) {
-            if (!(error instanceof DOMException && error.name === "AbortError")) {
-                console.error("[Message] Reply failed:", error);
-            }
-        } finally {
-            if (generationControllerRef.current === controller) generationControllerRef.current = null;
-            setIsGenerating(false);
-        }
-    };
-
-    useEffect(() => {
-        const handleBlacklistedReply = (event: Event) => {
-            const characterId = (event as CustomEvent<{ characterId?: string }>).detail?.characterId;
-            if (!characterId) return;
-            void requestReply(loadMessageEntries(characterId), characterId);
-        };
-        window.addEventListener("message-request-reply", handleBlacklistedReply);
-        return () => window.removeEventListener("message-request-reply", handleBlacklistedReply);
-    });
-
     const toggleReplyGeneration = () => {
-        if (isGenerating) {
-            generationControllerRef.current?.abort();
+        if (!selectedCharacterId) return;
+        if (isMessageReplyGenerating(selectedCharacterId)) {
+            stopMessageReply(selectedCharacterId);
             return;
         }
-        void requestReply(entries);
+        void requestMessageReply(selectedCharacterId, entries);
     };
 
     const sendMessage = async () => {
@@ -206,10 +151,8 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
         if (!content || !selectedCharacterId || !selectedSession || isGenerating) return;
 
         const userEntry = pushMessageEntry({ characterId: selectedCharacterId, role: "user", content });
-        const nextEntries = [...entries, userEntry];
-        setEntries(nextEntries);
+        setEntries(current => [...current, userEntry]);
         setDraft("");
-        void requestReply(nextEntries);
     };
 
     const closeContextMenu = () => {
@@ -217,6 +160,42 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
         setContextMenuAnchor(null);
         setEditingEntryId(null);
         setEditingContent("");
+    };
+
+    const getContextMenuInitialStyle = () => {
+        if (!contextMenuAnchor) return { left: 0, top: 0 };
+        return { left: contextMenuAnchor.x, top: Math.max(8, contextMenuAnchor.y - 90) };
+    };
+
+    const positionContextMenu = (element: HTMLDivElement | null) => {
+        if (!element || !contextMenuAnchor) return;
+        const margin = 8;
+        const gap = 12;
+        const menuWidth = element.offsetWidth;
+        const menuHeight = element.offsetHeight;
+        let left = contextMenuAnchor.x - menuWidth / 2;
+        left = Math.max(margin, Math.min(left, window.innerWidth - menuWidth - margin));
+        const placeBelow = contextMenuAnchor.y - menuHeight - gap < margin;
+        let top = placeBelow ? contextMenuAnchor.y + gap : contextMenuAnchor.y - menuHeight - gap;
+        top = Math.max(margin, Math.min(top, window.innerHeight - menuHeight - margin));
+        element.style.left = `${left}px`;
+        element.style.top = `${top}px`;
+        const triangle = element.querySelector("[data-menu-triangle]") as HTMLElement | null;
+        if (!triangle) return;
+        triangle.style.left = `${Math.max(14, Math.min(contextMenuAnchor.x - left, menuWidth - 14))}px`;
+        triangle.style.right = "auto";
+        triangle.style.transform = "translateX(-50%)";
+        if (placeBelow) {
+            triangle.style.top = "-6px";
+            triangle.style.bottom = "auto";
+            triangle.style.borderTop = "none";
+            triangle.style.borderBottom = "6px solid var(--ctx-menu-bg, #FFFFFF)";
+        } else {
+            triangle.style.top = "auto";
+            triangle.style.bottom = "-6px";
+            triangle.style.borderBottom = "none";
+            triangle.style.borderTop = "6px solid var(--ctx-menu-bg, #FFFFFF)";
+        }
     };
 
     const beginEditing = () => {
@@ -236,9 +215,10 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
     const handleEntryPointerDown = (event: React.PointerEvent, entryId: string) => {
         if (event.pointerType === "mouse" && event.button !== 0) return;
         event.preventDefault();
+        const anchor = { x: event.clientX, y: event.clientY };
+        longPressStartRef.current = anchor;
         longPressTriggeredRef.current = false;
         if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-        const anchor = { x: event.clientX, y: event.clientY };
         longPressTimerRef.current = setTimeout(() => {
             longPressTriggeredRef.current = true;
             setActiveEntryId(entryId);
@@ -248,6 +228,7 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
     };
 
     const handleEntryPointerUp = (event: React.PointerEvent) => {
+        longPressStartRef.current = null;
         if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
         longPressTimerRef.current = null;
         if (longPressTriggeredRef.current) {
@@ -255,6 +236,20 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
             event.preventDefault();
             longPressTriggeredRef.current = false;
         }
+    };
+
+    const handleEntryPointerCancel = () => {
+        longPressStartRef.current = null;
+        longPressTriggeredRef.current = false;
+        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+    };
+
+    const handleEntryPointerMove = (event: React.PointerEvent) => {
+        if (!longPressStartRef.current) return;
+        const deltaX = Math.abs(event.clientX - longPressStartRef.current.x);
+        const deltaY = Math.abs(event.clientY - longPressStartRef.current.y);
+        if (deltaX > 10 || deltaY > 10) handleEntryPointerCancel();
     };
 
     const activeEntry = entries.find(entry => entry.id === activeEntryId);
@@ -378,7 +373,9 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
                                             className={`message-entry-group ${entry.role}${activeEntryId === entry.id ? " active" : ""}`}
                                             onPointerDown={event => handleEntryPointerDown(event, entry.id)}
                                             onPointerUp={handleEntryPointerUp}
-                                            onPointerCancel={handleEntryPointerUp}
+                                            onPointerCancel={handleEntryPointerCancel}
+                                            onPointerLeave={handleEntryPointerCancel}
+                                            onPointerMove={handleEntryPointerMove}
                                             onContextMenu={event => {
                                                 event.preventDefault();
                                                 setActiveEntryId(entry.id);
@@ -415,11 +412,6 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
                                 onClick={toggleReplyGeneration}
                                 aria-label="触发AI回复"
                             >
-                                {isGenerating && (
-                                    <span className="message-composer-replying" role="status" aria-label="正在回复">
-                                        <i /><i /><i />
-                                    </span>
-                                )}
                                 <Plus size={21} strokeWidth={2} />
                             </button>
                             <div className="message-composer-field">
@@ -453,16 +445,24 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
                             </div>
                         </div>
                         {activeEntry && editingEntryId === activeEntry.id && (
-                            <div className="message-edit-overlay" onPointerDown={closeContextMenu}>
-                                <div className="message-edit-dialog" onPointerDown={event => event.stopPropagation()}>
-                                    <div className="message-edit-title-row">
-                                        <strong>编辑短信</strong>
-                                        <button type="button" onClick={closeContextMenu} aria-label="关闭编辑">×</button>
+                            <div className="chat-html-overlay" onClick={closeContextMenu}>
+                                <div className="g-card w-[min(84vw,420px)] max-h-[78vh] p-4 flex flex-col gap-3" onClick={event => event.stopPropagation()}>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="menu-label">编辑短信</span>
+                                            <span className="menu-desc !mt-0">保存后会同步更新短信记录</span>
+                                        </div>
+                                        <button className="ui-bare-btn text-[var(--c-icon)] ts-18 leading-none" type="button" onClick={closeContextMenu} aria-label="关闭编辑">✕</button>
                                     </div>
-                                    <textarea value={editingContent} onChange={event => setEditingContent(event.target.value)} autoFocus />
-                                    <div className="message-edit-actions">
-                                        <button type="button" onClick={closeContextMenu}>取消</button>
-                                        <button type="button" onClick={saveEditing} disabled={!editingContent.trim()}>保存</button>
+                                    <textarea
+                                        autoFocus
+                                        value={editingContent}
+                                        onChange={event => setEditingContent(event.target.value)}
+                                        className="w-full min-h-[180px] max-h-[52vh] resize-none rounded-2xl border border-[var(--c-border)] bg-[var(--c-input)] px-4 py-3 ts-14 text-[var(--c-text)] outline-none"
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <button className="ui-btn ui-btn-outline" type="button" onClick={closeContextMenu}>取消</button>
+                                        <button className="ui-btn ui-btn-primary" type="button" onClick={saveEditing} disabled={!editingContent.trim()}>保存</button>
                                     </div>
                                 </div>
                             </div>
@@ -474,7 +474,8 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
                             <div
                                 className="ctx-menu chat-floating-ctx-menu message-context-menu flex flex-col items-center gap-[6px] py-[4px] px-0"
                                 data-role={activeEntry.role}
-                                style={{ left: Math.min(contextMenuAnchor.x, window.innerWidth - 220), top: Math.max(8, contextMenuAnchor.y - 58) }}
+                                ref={positionContextMenu}
+                                style={getContextMenuInitialStyle()}
                                 onPointerDown={event => event.stopPropagation()}
                             >
                                 <div className="flex">
@@ -485,11 +486,12 @@ export function MessagePanel({ onThreadChange }: MessagePanelProps) {
                                     <button type="button" className="ctx-menu-btn ctx-menu-btn-danger" onClick={() => { deleteMessageEntry(activeEntry.characterId, activeEntry.id); setEntries(current => current.filter(entry => entry.id !== activeEntry.id)); closeContextMenu(); }}>删除</button>
                                     <button type="button" className="ctx-menu-btn ctx-menu-btn-danger" onClick={() => { deleteMessageEntriesFrom(activeEntry.characterId, activeEntry.id); setEntries(current => current.slice(0, current.findIndex(entry => entry.id === activeEntry.id))); closeContextMenu(); }}>删除以下</button>
                                     {activeEntry.role === "assistant" && <button type="button" className="ctx-menu-btn ctx-menu-btn-danger" onClick={() => {
-                                        const retryHistory = entries.slice(0, entries.findIndex(entry => entry.id === activeEntry.id));
+                                        const activeIndex = entries.findIndex(entry => entry.id === activeEntry.id);
+                                        const retryHistory = entries.slice(0, activeIndex);
                                         deleteMessageEntriesFrom(activeEntry.characterId, activeEntry.id);
                                         setEntries(retryHistory);
                                         closeContextMenu();
-                                        void requestReply(retryHistory);
+                                        void requestMessageReply(activeEntry.characterId, retryHistory);
                                     }}>重试以下</button>}
                                 </div>
                                 <div data-menu-triangle className="ctx-menu-triangle absolute -top-[6px] w-0 h-0" />

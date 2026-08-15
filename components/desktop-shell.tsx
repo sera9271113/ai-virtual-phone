@@ -109,7 +109,7 @@ import { loadCharacters } from "@/lib/character-storage";
 import { generateChatCompletion, flattenCompletionResult } from "@/lib/chat-engine";
 import { parseAIResponse } from "@/lib/rich-message-parser";
 import { requestBackgroundChatReply, scheduleFollowUp } from "@/lib/follow-up-service";
-import { CHAT_MESSAGE_NOTICE_EVENT, CHAT_OPEN_SESSION_EVENT, type ChatMessageNoticeDetail } from "@/lib/chat-notification-events";
+import { CHAT_MESSAGE_NOTICE_EVENT, CHAT_OPEN_MESSAGE_EVENT, CHAT_OPEN_SESSION_EVENT, type ChatMessageNoticeDetail } from "@/lib/chat-notification-events";
 import { setMascotContext } from "@/lib/mascot-context";
 import { useWeixinBridge } from "@/lib/use-weixin-bridge";
 import { startWeixinCloudRealtimeSync } from "@/lib/weixin-cloud-sync";
@@ -968,6 +968,8 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
   } | null>(null);
   const [chatMessageNotice, setChatMessageNotice] = useState<{
     sessionId: string;
+    characterId?: string;
+    channel?: "chat" | "message";
     title: string;
     body: string;
     avatar: string | null;
@@ -2158,7 +2160,24 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
 
   const handleNoticeClick = useCallback(() => {
     if (noticeDragRef.current.far) { noticeDragRef.current.far = false; return; }
-    if (chatMessageNotice) openChatSessionFromNotice(chatMessageNotice.sessionId);
+    if (!chatMessageNotice) return;
+    if (chatMessageNotice.channel === "message" && chatMessageNotice.characterId) {
+      if (chatMessageNoticeTimerRef.current !== null) {
+        window.clearTimeout(chatMessageNoticeTimerRef.current);
+        chatMessageNoticeTimerRef.current = null;
+      }
+      setChatMessageNotice(null);
+      setShowMiniChat(false);
+      setChatInitSessionId(null);
+      setActiveApp("chat" as IconId);
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent(CHAT_OPEN_MESSAGE_EVENT, {
+          detail: { characterId: chatMessageNotice.characterId },
+        }));
+      }, 0);
+      return;
+    }
+    openChatSessionFromNotice(chatMessageNotice.sessionId);
   }, [chatMessageNotice, openChatSessionFromNotice]);
 
   useEffect(() => {
@@ -2166,21 +2185,28 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
       const detail = (e as CustomEvent<ChatMessageNoticeDetail>).detail;
       if (!detail?.sessionId || !detail.body?.trim()) return;
 
-      const isCurrentMainChat = activeApp === "chat" && activeChatSession?.id === detail.sessionId;
-      const isCurrentMiniChat = showMiniChat && miniSessionRef.current?.id === detail.sessionId;
+      const isCurrentMainChat = detail.channel !== "message"
+        && activeApp === "chat"
+        && activeChatSession?.id === detail.sessionId;
+      const isCurrentMiniChat = detail.channel !== "message"
+        && showMiniChat
+        && miniSessionRef.current?.id === detail.sessionId;
       if (isCurrentMainChat || isCurrentMiniChat) return;
 
+      const chars = loadCharacters();
       const sessions = loadChatSessions();
       const session = sessions.find(s => s.id === detail.sessionId);
-      if (!session) return;
+      const isMessageNotice = detail.channel === "message";
+      if (!session && !isMessageNotice) return;
 
-      const chars = loadCharacters();
-      const isGroup = detail.isGroup ?? !!session.isGroup;
-      const char = !isGroup ? chars.find(c => c.id === session.contactId) : null;
+      const isGroup = detail.isGroup ?? !!session?.isGroup;
+      const char = !isGroup
+        ? chars.find(c => c.id === (detail.characterId || session?.contactId))
+        : null;
       const detailSenderName = detail.senderName?.trim();
       const title = detailSenderName && detailSenderName !== "对方"
         ? detailSenderName
-        : (isGroup ? session.groupName || "群聊" : session.alias || char?.name || "新消息");
+        : (isGroup ? session?.groupName || "群聊" : session?.alias || char?.name || "新短信");
 
       if (chatMessageNoticeTimerRef.current !== null) {
         window.clearTimeout(chatMessageNoticeTimerRef.current);
@@ -2189,6 +2215,8 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
       setNoticeDragY(0);
       setChatMessageNotice({
         sessionId: detail.sessionId,
+        characterId: detail.characterId,
+        channel: detail.channel,
         title,
         body: detail.body.trim(),
         avatar: detail.avatar ?? char?.avatar ?? null,
@@ -3549,11 +3577,13 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
                       </span>
                     )}
                     <div className="chat-message-notice-text">
-                      <span className="chat-message-notice-name">{chatMessageNotice.title}</span>
+                      <div className="chat-message-notice-name-row">
+                        <span className="chat-message-notice-name">{chatMessageNotice.title}</span>
+                        <span className="chat-message-notice-channel">{chatMessageNotice.channel === "message" ? "Message" : "Chat"}</span>
+                      </div>
                       <span className="chat-message-notice-body">{chatMessageNotice.body}</span>
                     </div>
                   </div>
-                  <span className="chat-message-notice-action">查看</span>
                 </button>
               ) : null}
 

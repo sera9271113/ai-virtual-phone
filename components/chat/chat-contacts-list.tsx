@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo, useDeferredValue, useSyncExternalStore } from "react";
 import { Plus } from "lucide-react";
-import { loadChatContacts, ChatContact, createOrGetSession, ChatSession, addChatContact, pushChatMessage, loadChatMessages } from "@/lib/chat-storage";
+import { loadChatContacts, ChatContact, createOrGetSession, createGroupSession, ChatSession, addChatContact, pushChatMessage, loadChatMessages } from "@/lib/chat-storage";
 import { resolveUserIdentity } from "@/lib/settings-storage";
 import { PENDING_REPLY_PREFIX } from "@/lib/friend-request-engine";
 import { CHARACTERS_UPDATED_EVENT, loadCharacters } from "@/lib/character-storage";
@@ -21,6 +21,7 @@ import { pinyin } from "pinyin-pro";
 import { kvSet } from "@/lib/kv-db";
 import { scrollElementWithinContainer } from "@/lib/dom-scroll";
 import { ChatFallbackAvatar } from "./chat-fallback-avatar";
+import { GroupCreateModal } from "./group-create-modal";
 import {
     DEFAULT_MASCOT_AVATAR,
     getMascotSettingsSnapshot,
@@ -48,6 +49,10 @@ export function ChatContactsList({ onSelectSession, onSelectMascot, pendingAddCo
     const [selectedRequest, setSelectedRequest] = useState<FriendRequest | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
+    const [showPlusMenu, setShowPlusMenu] = useState(false);
+    const [showContactPicker, setShowContactPicker] = useState(false);
+    const [showGroupCreate, setShowGroupCreate] = useState(false);
+    const plusMenuRef = useRef<HTMLSpanElement>(null);
     const [addQuery, setAddQuery] = useState("");
     const [addResult, setAddResult] = useState<Character | null | undefined>(undefined);
     const [isSendingAdd, setIsSendingAdd] = useState(false);
@@ -63,6 +68,17 @@ export function ChatContactsList({ onSelectSession, onSelectMascot, pendingAddCo
     const deferredContactFilter = useDeferredValue(contactFilter);
     const bodyRef = useRef<HTMLDivElement>(null);
     const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+    useEffect(() => {
+        if (!showPlusMenu) return;
+        const handlePointerDown = (event: PointerEvent) => {
+            if (plusMenuRef.current && !plusMenuRef.current.contains(event.target as Node)) {
+                setShowPlusMenu(false);
+            }
+        };
+        document.addEventListener("pointerdown", handlePointerDown);
+        return () => document.removeEventListener("pointerdown", handlePointerDown);
+    }, [showPlusMenu]);
 
     useEffect(() => {
         let cancelled = false;
@@ -202,21 +218,49 @@ export function ChatContactsList({ onSelectSession, onSelectMascot, pendingAddCo
                                 className="chat-search-input ts-15 w-full bg-transparent outline-none text-[var(--c-text-title)] placeholder:text-[var(--c-icon)]"
                             />
                         </div>
-                        <button
-                            className="chat-header-plus-btn"
-                            type="button"
-                            aria-label="添加朋友"
-                            onClick={() => {
-                                addFromCardRef.current = false;
-                                setIsAddFriendOpen(true);
-                                setAddQuery("");
-                                setAddResult(undefined);
-                                setIsSendingAdd(false);
-                                setGreetingText(identity?.name ? `我是${identity.name}` : "你好");
-                            }}
-                        >
-                            <Plus size={18} strokeWidth={2} />
-                        </button>
+                        <span className="relative" ref={plusMenuRef}>
+                            <button
+                                className="chat-header-plus-btn"
+                                type="button"
+                                aria-label="新建"
+                                onClick={() => setShowPlusMenu(current => !current)}
+                            >
+                                <Plus size={18} strokeWidth={2} />
+                            </button>
+                            {showPlusMenu && (
+                                <div className="g-dropdown chat-header-plus-menu absolute top-[44px] right-0 py-2 px-0 w-[140px] z-[100]">
+                                    <ContactMenuOption
+                                        icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>}
+                                        label="发起聊天"
+                                        onClick={() => {
+                                            setShowPlusMenu(false);
+                                            setShowContactPicker(true);
+                                        }}
+                                    />
+                                    <ContactMenuOption
+                                        icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>}
+                                        label="创建群聊"
+                                        onClick={() => {
+                                            setShowPlusMenu(false);
+                                            setShowGroupCreate(true);
+                                        }}
+                                    />
+                                    <ContactMenuOption
+                                        icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>}
+                                        label="添加好友"
+                                        onClick={() => {
+                                            setShowPlusMenu(false);
+                                            addFromCardRef.current = false;
+                                            setIsAddFriendOpen(true);
+                                            setAddQuery("");
+                                            setAddResult(undefined);
+                                            setIsSendingAdd(false);
+                                            setGreetingText(identity?.name ? `我是${identity.name}` : "你好");
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </span>
                     </div>
                 </header>
                 <div ref={bodyRef} className="page-body" data-ui="body">
@@ -423,6 +467,59 @@ export function ChatContactsList({ onSelectSession, onSelectMascot, pendingAddCo
                 );
             })()}
 
+            {showContactPicker && (
+                <div className="modal-overlay" onClick={() => setShowContactPicker(false)}>
+                    <div className="modal-dialog" onClick={event => event.stopPropagation()}>
+                        <span className="modal-header-title">选择联系人</span>
+                        {contacts.length === 0 ? (
+                            <span className="menu-desc">暂无联系人，请先添加好友</span>
+                        ) : (
+                            <div className="chat-contact-list">
+                                {contacts.map(contact => (
+                                    <div
+                                        key={contact.characterId}
+                                        className="chat-contact-item"
+                                        onClick={() => {
+                                            const session = createOrGetSession(contact.characterId);
+                                            setShowContactPicker(false);
+                                            onSelectSession(session);
+                                        }}
+                                    >
+                                        <div className="chat-contact-avatar">
+                                            {contact.char?.avatar ? <img src={contact.char.avatar} alt="" /> : <ChatFallbackAvatar />}
+                                        </div>
+                                        <span className="chat-contact-name">{contact.char?.name || "未知角色"}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {showGroupCreate && (
+                <GroupCreateModal
+                    onClose={() => setShowGroupCreate(false)}
+                    onCreate={(groupName, participantIds, isSpectator) => {
+                        const session = createGroupSession(groupName, participantIds, { isSpectator });
+                        const userName = resolveUserIdentity()?.name ?? "用户";
+                        const memberNames = participantIds
+                            .map(id => chars.find(character => character.id === id)?.name ?? "未知")
+                            .join("、");
+                        pushChatMessage({
+                            sessionId: session.id,
+                            role: "system",
+                            content: isSpectator
+                                ? `${memberNames}加入了群聊`
+                                : `${userName}邀请${memberNames}加入群聊`,
+                            status: "sent",
+                        });
+                        setShowGroupCreate(false);
+                        onSelectSession(session);
+                    }}
+                />
+            )}
+
                 </div>
             </div>
 
@@ -586,6 +683,15 @@ export function ChatContactsList({ onSelectSession, onSelectMascot, pendingAddCo
                 </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+function ContactMenuOption({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+    return (
+        <div onClick={onClick} className="menu-option-border flex items-center gap-3 px-4 py-3 ts-14 text-[var(--c-text)] cursor-pointer">
+            <span className="flex items-center text-[var(--c-text)]">{icon}</span>
+            <span>{label}</span>
         </div>
     );
 }

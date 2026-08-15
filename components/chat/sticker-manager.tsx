@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { Trash2, Plus, Smile, ImagePlus, ChevronRight, Sticker, Layers } from "lucide-react";
+import { Trash2, Plus, Smile, ImagePlus, ChevronRight, Layers } from "lucide-react";
 import { loadCharacters } from "@/lib/character-storage";
 import type { Character } from "@/lib/character-types";
 import {
@@ -24,6 +24,18 @@ import {
 import { loadChatContacts } from "@/lib/chat-storage";
 import { PageShell } from "@/components/ui/page-shell";
 import { ConfirmDialog } from "@/components/ui/modal";
+
+function MoodSmileIcon() {
+    return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
+            <path d="M9 10l.01 0" />
+            <path d="M15 10l.01 0" />
+            <path d="M9.5 15a3.5 3.5 0 0 0 5 0" />
+        </svg>
+    );
+}
 
 export function StickerManager({ onBack }: { onBack: () => void }) {
     const contactIds = new Set(loadChatContacts().map(c => c.characterId));
@@ -56,20 +68,10 @@ export function StickerManager({ onBack }: { onBack: () => void }) {
         <PageShell title="表情包管理" onBack={onBack} className="absolute inset-0 z-[100]">
             <div className="px-5 pt-4 pb-8 h-full overflow-y-auto">
                 <div className="grid grid-cols-2 gap-4">
-                    {packs.map((pack, i) => {
+                    {packs.map(pack => {
                         const assignedIds = getPackAssignments(pack.id);
                         const assignedNames = characters.filter(c => assignedIds.includes(c.id)).map(c => c.name);
                         
-                        // Pick a dynamic gradient based on index so the grid looks vibrant
-                        const gradients = [
-                            "from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 text-teal-600",
-                            "from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-600",
-                            "from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 text-indigo-600",
-                            "from-pink-100 to-rose-100 dark:from-pink-900/30 dark:to-rose-900/30 text-rose-600",
-                        ];
-                        const gClass = gradients[i % gradients.length];
-                        const [bgGrad, textColor] = [gClass.split(" text-")[0], "text-" + gClass.split(" text-")[1]];
-
                         return (
                         <div key={pack.id} className="relative group">
                             <button
@@ -77,8 +79,8 @@ export function StickerManager({ onBack }: { onBack: () => void }) {
                                 className="w-full bg-[var(--c-card)] rounded-[22px] p-4 pb-5 flex flex-col items-start gap-4 cursor-pointer text-left transition-transform duration-200 active:scale-[0.96] border-none"
                                 style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.025), inset 0 1px 0 rgba(255,255,255,0.4)" }}
                             >
-                                <div className={`w-[48px] h-[48px] rounded-2xl bg-gradient-to-br ${bgGrad} flex items-center justify-center shrink-0 shadow-inner`}>
-                                    <Sticker size={24} className={textColor} />
+                                <div className="w-[48px] h-[48px] flex items-center justify-center shrink-0">
+                                    <span className="text-[var(--c-icon)]"><MoodSmileIcon /></span>
                                 </div>
                                 
                                 <div className="flex flex-col w-full gap-0.5">

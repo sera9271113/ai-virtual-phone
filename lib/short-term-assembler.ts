@@ -404,7 +404,7 @@ export function loadNativeTimeline(
 
     for (const message of loadMessageEntries(characterId)) {
         if (options?.afterTimestamp && message.createdAt <= options.afterTimestamp) continue;
-        const sender = message.role === "user" ? userName : charName;
+        const sender = message.role === "user" ? `用户（${userName}）` : `角色（${charName}）`;
         const label = formatPromptEventLabel("短信", message.createdAt, timeAware, timestampOptions);
         const content = stripStateAndInnerForPrompt(message.content || "").trim();
         if (!content) continue;
@@ -827,11 +827,11 @@ export function loadNativeTimeline(
 }
 
 // Fixed order — lower = further from LLM output (appears higher in prompt)
-const FEATURE_ORDER: Record<string, number> = { map: 0, game: 0.5, moments: 1, xiaohongshu: 1.5, checkphone: 1.7, story: 2, vn: 2, theater: 2.2, interview: 2.35, cocreate: 2.4, diary_entry: 2.45, notewall: 2.5, custom_app: 2.6, group_chat: 3, chat: 4 };
+const FEATURE_ORDER: Record<string, number> = { map: 0, game: 0.5, moments: 1, xiaohongshu: 1.5, checkphone: 1.7, story: 2, vn: 2, theater: 2.2, interview: 2.35, cocreate: 2.4, diary_entry: 2.45, notewall: 2.5, custom_app: 2.6, group_chat: 3, chat: 4, message: 4.1 };
 // Map appId → XML tag name for the "current feature" wrapper
 const FEATURE_TAG: Record<string, string> = {
     chat: "recent_chat",
-    message: "recent_message",
+    message: "recent_sms",
     group_chat: "recent_group_chat",
     moments: "recent_moments",
     story: "recent_events",
@@ -1070,7 +1070,7 @@ export function prepareShortTermContext(
     if (!options?.excludeMessageEntries) {
         const messageEntries = timeline.filter(e => e.sourceApp === "message" && e.sourceDetail === "message");
         if (messageEntries.length > 0) {
-            raw.push({ tag: "recent_message", order: FEATURE_ORDER.chat, entries: messageEntries });
+            raw.push({ tag: "recent_sms", order: FEATURE_ORDER.message, entries: messageEntries });
         }
     }
 
@@ -1323,6 +1323,11 @@ export function prepareGroupShortTermContext(
         raw.push({ tag: "recent_chat", order: FEATURE_ORDER.chat, entries: directChatEntries });
     }
 
+    const messageEntries = timeline.filter(e => e.sourceApp === "message" && e.sourceDetail === "message");
+    if (messageEntries.length > 0) {
+        raw.push({ tag: "recent_sms", order: FEATURE_ORDER.message, entries: messageEntries });
+    }
+
     const offlineGroupChatEntries = timeline.filter(e => isChatOfflineEntry(e) && e.groupSessionId);
     if (offlineGroupChatEntries.length > 0) {
         raw.push({ tag: "recent_group_chat", order: FEATURE_ORDER.group_chat, entries: offlineGroupChatEntries });
@@ -1410,7 +1415,7 @@ export function prepareGroupShortTermContext(
                                                         entry.sourceApp === "story" && entry.sourceDetail === "black_market_theater" ? "recent_theater" :
                                                             entry.sourceApp === "diary" && entry.sourceDetail === "diary_entry" ? "recent_diary" :
                                                                 entry.sourceApp === "diary" && entry.sourceDetail === "notewall" ? "recent_notewall" :
-                                                                    entry.sourceApp === "message" ? "recent_message" :
+                                                                    entry.sourceApp === "message" ? "recent_sms" :
                                                                         entry.sourceApp === "chat" ? "recent_chat" : "recent_events"
                 ),
                 text: entry.content,

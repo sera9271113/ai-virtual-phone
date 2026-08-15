@@ -614,7 +614,7 @@
   flex-direction: column;
   padding: 16px;
   background: #fff;
-  border: 1px solid #d4d4d4;
+  border: 1px solid rgb(44 52 64 / 10%);
   border-radius: 10px;
   box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
 }
@@ -624,7 +624,7 @@
   resize: vertical;
   padding: 10px;
   font: inherit;
-  border: 1px solid #c7c7cc;
+  border: 1px solid rgb(44 52 64 / 12%);
   border-radius: 6px;
 }
 
@@ -648,11 +648,13 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgb(44 52 64 / 8%);
 }
 
 .message-edit-actions button {
   padding: 7px 14px;
-  border: 1px solid #c7c7cc;
+  border: 1px solid rgb(44 52 64 / 10%);
   border-radius: 6px;
   background: #fff;
 }
@@ -1968,7 +1970,7 @@
   padding: 0 !important;
   overflow: hidden;
   background: var(--ctx-menu-bg, #FFFFFF);
-  border: 1px solid var(--c-card-border, #E5E5E5);
+  border: 1px solid color-mix(in srgb, var(--c-card-border, #E5E5E5) 45%, transparent);
   border-radius: 8px;
   box-shadow: none;
   z-index: 50;
@@ -2018,7 +2020,7 @@
 }
 .ctx-menu-btn + .ctx-menu-btn,
 .ctx-menu > .flex + .flex > .ctx-menu-btn:first-child {
-  border-top: 1px solid var(--c-card-border, #E5E5E5);
+  border-top: 1px solid color-mix(in srgb, var(--c-card-border, #E5E5E5) 38%, transparent);
 }
 .ctx-menu-triangle {
   border-left: 6px solid transparent;
@@ -8299,10 +8301,20 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
   gap: 3px;
 }
 
+.chat-message-notice-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
 .chat-message-notice-name {
+  min-width: 0;
   color: var(--c-text-title);
   font-size: calc(12.6px*var(--app-text-scale,1));
   font-weight: 700;
@@ -8310,6 +8322,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat-message-notice-channel {
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--c-text) 52%, transparent);
+  font-size: calc(10px*var(--app-text-scale,1));
+  font-weight: 600;
+  line-height: 1.1;
 }
 
 .chat-message-notice-body {

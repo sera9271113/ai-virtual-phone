@@ -1,5 +1,6 @@
 export const CHAT_MESSAGE_NOTICE_EVENT = "ai-chat-message-notice";
 export const CHAT_OPEN_SESSION_EVENT = "ai-chat-open-session";
+export const CHAT_OPEN_MESSAGE_EVENT = "ai-chat-open-message";
 
 export type ChatMessageNoticeDetail = {
   sessionId: string;
@@ -7,6 +8,8 @@ export type ChatMessageNoticeDetail = {
   senderName?: string;
   avatar?: string | null;
   isGroup?: boolean;
+  channel?: "chat" | "message";
+  characterId?: string;
 };
 
 export function dispatchChatMessageNotice(detail: ChatMessageNoticeDetail): void {

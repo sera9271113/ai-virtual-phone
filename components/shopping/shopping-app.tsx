@@ -497,7 +497,7 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
     const syncWallet = () => {
       const next = loadWalletState();
       setWalletState(next);
-      setSelectedPaymentSourceId(current => current === WALLET_BALANCE_ACCOUNT_ID || next.cards.some(card => card.id === current) || next.familyCards.some(card => card.id === current && card.status === "active" && card.direction === "granted")
+      setSelectedPaymentSourceId(current => current === WALLET_BALANCE_ACCOUNT_ID || next.cards.some(card => card.id === current) || next.familyCards.some(card => card.id === current && card.status === "active" && card.direction === "requested")
         ? current
         : WALLET_BALANCE_ACCOUNT_ID);
     };
@@ -545,7 +545,7 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
             balance: card.balance,
             description: `${getWalletCardDisplayNumber(card.maskedNumber)} · 银行卡`,
           };
-          const familyCard = walletState.familyCards.find(item => item.id === selectedPaymentSourceId && item.status === "active" && item.direction === "granted");
+          const familyCard = walletState.familyCards.find(item => item.id === selectedPaymentSourceId && item.status === "active" && item.direction === "requested");
           return familyCard ? {
             id: familyCard.id,
             familyCardId: familyCard.id,
@@ -1927,7 +1927,7 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
                   balance: card.balance,
                   icon: <WalletCards size={20} />,
                 })),
-                ...walletState.familyCards.filter(card => card.status === "active" && card.direction === "granted").map(card => ({
+                ...walletState.familyCards.filter(card => card.status === "active" && card.direction === "requested").map(card => ({
                   id: card.id,
                   title: `${card.characterName}的亲属卡`,
                   description: `每月额度 · ${card.characterName}赠送`,

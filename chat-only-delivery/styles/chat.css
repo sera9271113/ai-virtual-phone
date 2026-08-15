@@ -1155,6 +1155,7 @@
 /* ── Context menu ── */
 .ctx-menu {
   background: var(--ctx-menu-bg, #2c2c2c);
+  border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   z-index: 50;
@@ -1194,7 +1195,7 @@
   color: var(--c-danger);
 }
 .ctx-menu-btn:not(:last-of-type) {
-  border-right: 1px solid rgba(255,255,255,0.1);
+  border-right: 1px solid rgba(255,255,255,0.06);
 }
 .ctx-menu-triangle {
   border-left: 6px solid transparent;
@@ -7463,10 +7464,20 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
   gap: 3px;
 }
 
+.chat-message-notice-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
 .chat-message-notice-name {
+  min-width: 0;
   color: var(--c-text-title);
   font-size: calc(12.6px*var(--app-text-scale,1));
   font-weight: 700;
@@ -7474,6 +7485,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat-message-notice-channel {
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--c-text) 52%, transparent);
+  font-size: calc(10px*var(--app-text-scale,1));
+  font-weight: 600;
+  line-height: 1.1;
 }
 
 .chat-message-notice-body {
