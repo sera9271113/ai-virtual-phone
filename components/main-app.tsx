@@ -185,6 +185,82 @@ function LockScreenWrap({
     return fontDataUrl ? `"AIVirtualPhoneUserFont", ${base}` : base;
   }, [themeProfile?.fontFamily, fontDataUrl]);
 
+  if (!ready) {
+    return (
+      <main className="app-root">
+        <section className="phone-shell-wrap" aria-label="Float loading">
+          <div className="phone-case">
+            <div className="phone-frame">
+              <div className="phone-shell" style={{ padding: 0, background: "#ffffff" }}>
+                <div className="float-splash">
+                  <div className="float-splash-icon" role="img" aria-label="Float" />
+                  <div className="float-splash-spinner" role="status" aria-label={TEXT.loading} />
+                  <div className="float-splash-name">Float</div>
+                </div>
+                <style>{`
+                  .float-splash {
+                    position: absolute;
+                    inset: 0;
+                    overflow: hidden;
+                    background: #ffffff;
+                  }
+                  .float-splash-icon {
+                    position: absolute;
+                    left: 50%;
+                    top: 45%;
+                    width: 112px;
+                    height: 112px;
+                    transform: translate(-50%, -50%);
+                    border-radius: 22px;
+                    background: #ffffff url("/icon-512.png") center / cover no-repeat;
+                    box-shadow: 0 8px 30px rgba(103, 87, 146, 0.11);
+                    animation: float-splash-breathe 2.1s ease-in-out infinite;
+                  }
+                  .float-splash-spinner {
+                    position: absolute;
+                    left: 50%;
+                    top: calc(45% + 84px);
+                    width: 26px;
+                    height: 26px;
+                    transform: translateX(-50%);
+                    border: 2px solid #eeeaf2;
+                    border-top-color: #a985d6;
+                    border-radius: 50%;
+                    animation: float-splash-spin 0.85s linear infinite;
+                  }
+                  .float-splash-name {
+                    position: absolute;
+                    left: 50%;
+                    bottom: 38px;
+                    transform: translateX(-50%);
+                    color: #9a6ed2;
+                    opacity: 0.58;
+                    font-family: Georgia, "Times New Roman", serif;
+                    font-size: 21px;
+                    font-style: italic;
+                    font-weight: 700;
+                    letter-spacing: 0;
+                    text-shadow: 0 2px 10px rgba(141, 95, 202, 0.2);
+                  }
+                  @keyframes float-splash-spin {
+                    to { transform: translateX(-50%) rotate(360deg); }
+                  }
+                  @keyframes float-splash-breathe {
+                    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.96; }
+                    50% { transform: translate(-50%, -50%) scale(1.025); opacity: 1; }
+                  }
+                  @media (prefers-reduced-motion: reduce) {
+                    .float-splash-icon { animation: none; }
+                  }
+                `}</style>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   // Always render the lock screen — even before hydration, show a static clock
   // so mobile users see something immediately (hydration may take a moment).
   return (

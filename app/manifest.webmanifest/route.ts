@@ -19,7 +19,7 @@ export function GET(request: NextRequest) {
         ...baseManifest,
         display: "minimal-ui",
         display_override: ["minimal-ui", "standalone"],
-        theme_color: "#f8f7f2",
+        theme_color: "#ffffff",
       }
     : baseManifest;
 
