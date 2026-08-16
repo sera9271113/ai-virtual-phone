@@ -131,6 +131,26 @@ const PROXY_URL = "/api/tool-proxy";
 
 const MIN_B64_MEDIA_LENGTH = 500;
 
+function isLocalNetworkUrl(rawUrl: string): boolean {
+    try {
+        const url = new URL(rawUrl);
+        const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+        if (host === "localhost" || host.endsWith(".localhost") || host === "::1") return true;
+        if (host.includes(":")) return host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80");
+        const parts = host.split(".").map(Number);
+        if (parts.length !== 4 || parts.some(part => !Number.isInteger(part) || part < 0 || part > 255)) return false;
+        const [first, second] = parts;
+        return first === 0
+            || first === 10
+            || first === 127
+            || (first === 169 && second === 254)
+            || (first === 172 && second >= 16 && second <= 31)
+            || (first === 192 && second === 168);
+    } catch {
+        return false;
+    }
+}
+
 async function replaceBase64WithRefs(text: string, signal?: AbortSignal): Promise<{ text: string; attachments: MediaAttachment[] }> {
     throwIfAborted(signal);
     const blocks = extractBase64Blocks(text);
@@ -195,18 +215,29 @@ async function proxyFetch(
     }
 
     try {
-        const res = await fetch(PROXY_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            signal,
-            body: JSON.stringify({
-                url,
-                method: options.method || "POST",
-                headers: options.headers || {},
-                body: options.body,
-                allowLocal: options.allowLocal === true,
-            }),
-        });
+        const directLocalRequest = options.allowLocal === true && isLocalNetworkUrl(url);
+        const isDirectSseRequest = options.method === "SSE_REQUEST" || options.method === "SSE_DISCOVER";
+        const res = directLocalRequest
+            ? await fetch(url, {
+                method: isDirectSseRequest ? "GET" : (options.method || "POST"),
+                headers: options.headers,
+                signal,
+                body: isDirectSseRequest || options.method === "GET"
+                    ? undefined
+                    : options.body === undefined ? undefined : JSON.stringify(options.body),
+            })
+            : await fetch(PROXY_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                signal,
+                body: JSON.stringify({
+                    url,
+                    method: options.method || "POST",
+                    headers: options.headers || {},
+                    body: options.body,
+                    allowLocal: options.allowLocal === true,
+                }),
+            });
 
         const text = await res.text();
         throwIfAborted(options.signal);
