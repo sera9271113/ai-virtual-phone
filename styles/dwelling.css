@@ -88,6 +88,9 @@
 .dwelling-char-picker {
   display: flex;
   align-items: stretch;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
   gap: 8px;
   padding: 0 12px;
   overflow-x: auto;
@@ -305,8 +308,10 @@
 .dw-room-drawer-item:hover { background: rgba(255, 255, 255, 0.07); color: var(--dw-ink); }
 .dw-room-drawer-item[data-active="true"] { background: rgba(255, 255, 255, 0.11); border-color: var(--dw-red-soft); color: var(--dw-ink); }
 .dw-room-drawer-index { color: var(--dw-red); font-family: var(--dw-latin); font-size: 11px; letter-spacing: 1px; }
-.dw-room-drawer-name { min-width: 0; font-size: 14px; letter-spacing: 3px; }
+.dw-room-drawer-copy { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.dw-room-drawer-name { min-width: 0; font-size: 14px; letter-spacing: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dw-room-drawer-en { color: var(--dw-faint); font-family: var(--dw-latin); font-size: 9px; letter-spacing: 1px; }
+.dw-room-drawer-furniture { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 42px; color: var(--dw-dim); font-family: var(--dw-latin); font-size: 11px; letter-spacing: 1px; }
 .dw-room-drawer-actions { display: flex; gap: 8px; padding: 14px 18px calc(18px + env(safe-area-inset-bottom)); border-top: 1px solid var(--dw-line); }
 .dw-tab-action {
   width: 26px; height: 26px;
@@ -948,6 +953,9 @@
   padding: 12px 14px calc(18px + env(safe-area-inset-bottom, 0px));
   min-height: 120px;
 }
+
+/* Keep Chinese UI text as compact as the room description copy. */
+.dwelling-app * { letter-spacing: 0.5px !important; }
 
 /* ── Confirm dialogs ── */
 .dw-confirm-overlay {

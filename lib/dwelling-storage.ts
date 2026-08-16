@@ -11,6 +11,7 @@ export type DwellingFurnitureItem = {
     id: string;
     name: string;
     preview: string;
+    description?: string;
 };
 
 export type DwellingMarker = { x: number; y: number };

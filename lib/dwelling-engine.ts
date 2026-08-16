@@ -9,6 +9,7 @@ import {
     loadRegexes,
     loadWorldBooks,
     resolveBinding,
+    resolveAuxiliaryApiConfig,
     resolveUserIdentity,
 } from "./settings-storage";
 import { assemblePromptPayload, type LLMMessage } from "./llm-prompt-assembler";
@@ -172,6 +173,19 @@ function sanitizeLayoutExtras(rooms: DwellingLayout["rooms"]): void {
 
 type ExtractedJSON = { value: unknown; repaired: boolean } | null;
 
+function normalizeItemPreviews(layout: DwellingLayout): void {
+    for (const room of layout.rooms) {
+        for (const furniture of room.furniture) {
+            for (const item of furniture.items) {
+                const rawItem = item as DwellingFurnitureItem & { description?: unknown };
+                if (!rawItem.preview && typeof rawItem.description === "string") {
+                    rawItem.preview = rawItem.description;
+                }
+            }
+        }
+    }
+}
+
 function extractJSON(text: string): ExtractedJSON {
     let s = text.trim();
     // Strip thinking / reasoning tags
@@ -221,8 +235,12 @@ export async function locateDwellingFurnitureMarkers(
     room: DwellingRoom,
     imageDataUrl: string,
 ): Promise<LocatedFurnitureMarker[]> {
-    const { apiConfig } = resolveDwellingConfigs(characterId);
-    if (!apiConfig || apiConfig.enableImageRecognition !== true || !imageDataUrl.startsWith("data:image/")) return [];
+    const apiConfig = resolveAuxiliaryApiConfig("dwellingFurnitureLocationApiConfigId");
+    if (!apiConfig || !imageDataUrl.startsWith("data:image/")) return [];
+
+    // Force vision on: furniture location is inherently a vision task,
+    // so we send the image regardless of the config's enableImageRecognition flag.
+    const visionConfig: ApiConfig = apiConfig.enableImageRecognition ? apiConfig : { ...apiConfig, enableImageRecognition: true };
 
     const furnitureList = room.furniture.map((furniture, index) => `${index}: ${furniture.label}`).join("\n");
     const prompt = [
@@ -231,7 +249,7 @@ export async function locateDwellingFurnitureMarkers(
         "坐标以完整原图左上角为(0,0)、右下角为(1,1)，取家具可见主体的中心点。",
         "只输出JSON：{\"furniture\":[{\"index\":0,\"x\":0.5,\"y\":0.5,\"visible\":true}]}。不要输出说明或Markdown。",
     ].join("\n");
-    const rawOutput = await sendLLMRequest(apiConfig, null, [{
+    const rawOutput = await sendLLMRequest(visionConfig, null, [{
         role: "user",
         content: [
             { type: "text", text: prompt },
@@ -380,57 +398,42 @@ async function generateDwellingLayoutOnce(
             return { layout: null, error: "LLM 返回格式不正确（缺少 rooms）" };
         }
 
-        // If JSON was repaired and output looks incomplete, treat as truncation
-        if (extracted.repaired) {
-            const lastRoom = obj.rooms[obj.rooms.length - 1];
-            const lastRoomIncomplete = !lastRoom || typeof lastRoom !== "object"
-                || typeof (lastRoom as Record<string, unknown>).id !== "string"
-                || typeof (lastRoom as Record<string, unknown>).name !== "string"
-                || typeof (lastRoom as Record<string, unknown>).description !== "string"
-                || !Array.isArray((lastRoom as Record<string, unknown>).furniture);
-            if (lastRoomIncomplete) {
-                return { layout: null, error: "LLM 返回的 JSON 不完整（疑似输出被截断后由 jsonrepair 修复），未保存不完整结果；请提高输出上限后重试" };
-            }
-        }
+        let layout: DwellingLayout;
 
-        const invalidRoom = obj.rooms.find((room: unknown) => {
-            if (!room || typeof room !== "object") return true;
-            const value = room as Record<string, unknown>;
-            return typeof value.id !== "string"
-                || typeof value.name !== "string"
-                || typeof value.description !== "string"
-                || !Array.isArray(value.furniture);
-        });
-        if (invalidRoom) {
-            return { layout: null, error: "LLM 返回格式不完整：每个房间必须包含 id、name、description 和 furniture" };
-        }
-
-        let layout = obj as DwellingLayout;
-        // Ensure every room has furniture array, every furniture has items array
-        for (const room of layout.rooms) {
-            if (!Array.isArray(room.furniture)) room.furniture = [];
-            for (const f of room.furniture) {
-                if (!Array.isArray(f.items)) f.items = [];
-            }
-        }
-
-        // Items mode: merge new items into old layout structure
+        // Items mode only needs stable room/furniture identifiers and refreshed items.
         if (mode === "items" && oldCached) {
+            const invalidItemsResponse = obj.rooms.find((room: unknown) => {
+                if (!room || typeof room !== "object") return true;
+                const value = room as Record<string, unknown>;
+                if (typeof value.id !== "string" || typeof value.name !== "string" || !Array.isArray(value.furniture)) return true;
+                return value.furniture.some((furniture: unknown) => {
+                    if (!furniture || typeof furniture !== "object") return true;
+                    const item = furniture as Record<string, unknown>;
+                    return typeof item.id !== "string"
+                        || (typeof item.label !== "string" && typeof item.name !== "string")
+                        || !Array.isArray(item.items);
+                });
+            });
+            if (invalidItemsResponse) {
+                return { layout: null, error: "物品刷新返回格式不完整：每个房间和家具必须包含 id、名称及 items" };
+            }
+
             const oldLayout = structuredClone(oldCached.layout);
 
-            // Build lookup maps: first by ID, then by name as fallback
-            const returnedRoomById = new Map(layout.rooms.map(room => [room.id, room]));
-            const returnedRoomByName = new Map(layout.rooms.map(room => [room.name, room]));
+            const returnedRooms = obj.rooms as Record<string, unknown>[];
+            const returnedRoomById = new Map(returnedRooms.map(room => [room.id as string, room]));
+            const returnedRoomByName = new Map(returnedRooms.map(room => [room.name as string, room]));
 
             for (const oldRoom of oldLayout.rooms) {
                 const returnedRoom = returnedRoomById.get(oldRoom.id) ?? returnedRoomByName.get(oldRoom.name);
                 if (!returnedRoom) {
                     return { layout: null, error: `物品刷新返回不完整：缺少房间「${oldRoom.name}」（id=${oldRoom.id}）` };
                 }
-                const returnedFurnitureById = new Map(returnedRoom.furniture.map(f => [f.id, f]));
-                const returnedFurnitureByLabel = new Map(returnedRoom.furniture.map(f => [f.label, f]));
+                const returnedFurniture = returnedRoom.furniture as Record<string, unknown>[];
+                const returnedFurnitureById = new Map(returnedFurniture.map(f => [f.id as string, f]));
+                const returnedFurnitureByName = new Map(returnedFurniture.map(f => [String(f.label ?? f.name), f]));
                 for (const oldFurniture of oldRoom.furniture) {
-                    const matchedFurniture = returnedFurnitureById.get(oldFurniture.id) ?? returnedFurnitureByLabel.get(oldFurniture.label);
+                    const matchedFurniture = returnedFurnitureById.get(oldFurniture.id) ?? returnedFurnitureByName.get(oldFurniture.label);
                     if (!matchedFurniture) {
                         return { layout: null, error: `物品刷新返回不完整：缺少「${oldRoom.name}」中的家具「${oldFurniture.label}」（id=${oldFurniture.id}）` };
                     }
@@ -440,20 +443,57 @@ async function generateDwellingLayoutOnce(
             for (const oldRoom of oldLayout.rooms) {
                 const returnedRoom = returnedRoomById.get(oldRoom.id) ?? returnedRoomByName.get(oldRoom.name);
                 if (!returnedRoom) continue;
-                const returnedFurnitureById = new Map(returnedRoom.furniture.map(f => [f.id, f]));
-                const returnedFurnitureByLabel = new Map(returnedRoom.furniture.map(f => [f.label, f]));
+                const returnedFurniture = returnedRoom.furniture as Record<string, unknown>[];
+                const returnedFurnitureById = new Map(returnedFurniture.map(f => [f.id as string, f]));
+                const returnedFurnitureByName = new Map(returnedFurniture.map(f => [String(f.label ?? f.name), f]));
                 for (const f of oldRoom.furniture) {
-                    const matchedFurniture = returnedFurnitureById.get(f.id) ?? returnedFurnitureByLabel.get(f.label);
+                    const matchedFurniture = returnedFurnitureById.get(f.id) ?? returnedFurnitureByName.get(f.label);
                     if (matchedFurniture && Array.isArray(matchedFurniture.items)) {
                         f.items = matchedFurniture.items;
                     }
                 }
             }
             layout = oldLayout;
+        } else {
+            // Full layout mode still requires the complete persisted layout shape.
+            if (extracted.repaired) {
+                const lastRoom = obj.rooms[obj.rooms.length - 1];
+                const lastRoomIncomplete = !lastRoom || typeof lastRoom !== "object"
+                    || typeof (lastRoom as Record<string, unknown>).id !== "string"
+                    || typeof (lastRoom as Record<string, unknown>).name !== "string"
+                    || typeof (lastRoom as Record<string, unknown>).description !== "string"
+                    || !Array.isArray((lastRoom as Record<string, unknown>).furniture);
+                if (lastRoomIncomplete) {
+                    return { layout: null, error: "LLM 返回的 JSON 不完整（疑似输出被截断后由 jsonrepair 修复），未保存不完整结果；请提高输出上限后重试" };
+                }
+            }
+
+            const invalidRoom = obj.rooms.find((room: unknown) => {
+                if (!room || typeof room !== "object") return true;
+                const value = room as Record<string, unknown>;
+                return typeof value.id !== "string"
+                    || typeof value.name !== "string"
+                    || typeof value.description !== "string"
+                    || !Array.isArray(value.furniture);
+            });
+            if (invalidRoom) {
+                return { layout: null, error: "LLM 返回格式不完整：每个房间必须包含 id、name、description 和 furniture" };
+            }
+
+            layout = obj as DwellingLayout;
+            for (const room of layout.rooms) {
+                if (!Array.isArray(room.furniture)) room.furniture = [];
+                for (const f of room.furniture) {
+                    if (!Array.isArray(f.items)) f.items = [];
+                }
+            }
         }
 
-        deduplicatePositions(layout.rooms);
-        sanitizeLayoutExtras(layout.rooms);
+        if (mode !== "items") {
+            deduplicatePositions(layout.rooms);
+            sanitizeLayoutExtras(layout.rooms);
+        }
+        normalizeItemPreviews(layout);
 
         return { layout };
     } catch (e) {

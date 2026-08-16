@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ChevronLeft, RefreshCw, Trash2, Wand2, X } from "lucide-react";
+import { Armchair, ChevronLeft, RefreshCw, Trash2, Wand2, X } from "lucide-react";
 import type { Character } from "@/lib/character-types";
 import { loadCharacters } from "@/lib/character-storage";
 import type { DwellingLayout, DwellingRoom, DwellingFurniture, DwellingFurnitureItem } from "@/lib/dwelling-storage";
@@ -288,12 +288,42 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
                 if (cancelled) return;
                 if (url) {
                     roomImageUrls.set(ref, url);
+                    rerender();
+                    // If no furniture has image-space markers yet, run location detection
+                    const needsLocation = room.furniture.length > 0
+                        && !room.furniture.some(f => f.markerSpace === "image");
+                    if (needsLocation && cs.layout) {
+                        try {
+                            const blob = await fetch(url).then(r => r.blob());
+                            if (cancelled) return;
+                            const reader = new FileReader();
+                            const dataUrl = await new Promise<string>((resolve, reject) => {
+                                reader.onload = () => resolve(reader.result as string);
+                                reader.onerror = reject;
+                                reader.readAsDataURL(blob);
+                            });
+                            if (cancelled) return;
+                            const located = await locateDwellingFurnitureMarkers(activeCharId, room, dataUrl);
+                            if (cancelled || cs.layout !== csForImage?.layout) return;
+                            const markersById = new Map(located.map(item => [item.furnitureId, item.marker]));
+                            if (markersById.size > 0) {
+                                room.furniture = room.furniture.map(furniture => {
+                                    const marker = markersById.get(furniture.id);
+                                    return marker ? { ...furniture, marker, markerSpace: "image" as const } : furniture;
+                                });
+                                await saveDwellingLayout(activeCharId, cs.layout);
+                                rerender();
+                            }
+                        } catch (e) {
+                            console.warn("[Dwelling] Auto furniture location on load failed:", e);
+                        }
+                    }
                 } else if (cs.layout && cs.layout.rooms.includes(room)) {
                     // 媒体已丢失：清掉引用，回氛围底并允许重新生成
                     room.imageAssetId = undefined;
                     void saveDwellingLayout(activeCharId, cs.layout);
+                    rerender();
                 }
-                rerender();
             })();
             return () => { cancelled = true; };
         }
@@ -309,7 +339,7 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
             furnitureIcon: furniture.icon,
             itemId: item.id,
             itemName: item.name,
-            itemPreview: item.preview,
+            itemPreview: item.preview || item.description || "",
             html,
         });
     }
@@ -346,7 +376,7 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
         <div className="dwelling-app" data-haspicker={characters.length > 1 ? "true" : undefined}>
             <div className="dwelling-header">
                 <button className="dw-back" onClick={onClose}><ChevronLeft size={18} /></button>
-                <h1>DWELLING</h1>
+                <h1>Dwelling</h1>
                 <button
                     className="dw-room-menu-trigger"
                     onClick={() => setRoomMenuOpen(true)}
@@ -433,8 +463,14 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
                                     data-active={activeRoomIdx === idx ? "true" : undefined}
                                     onClick={() => { setActiveRoomIdx(idx); setItemDetail(null); setRoomMenuOpen(false); }}>
                                     <span className="dw-room-drawer-index">{String(idx + 1).padStart(2, "0")}</span>
-                                    <span className="dw-room-drawer-name">{room.name}</span>
-                                    {room.en && <span className="dw-room-drawer-en">{room.en}</span>}
+                                    <span className="dw-room-drawer-copy">
+                                        <span className="dw-room-drawer-name">{room.name}</span>
+                                        {room.en && <span className="dw-room-drawer-en">{room.en}</span>}
+                                    </span>
+                                    <span className="dw-room-drawer-furniture" aria-label={`${room.furniture.length} 件家具`}>
+                                        <span>{room.furniture.length}</span>
+                                        <Armchair size={17} strokeWidth={1.8} aria-hidden="true" />
+                                    </span>
                                 </button>
                             ))}
                         </div>

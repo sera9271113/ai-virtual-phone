@@ -32,6 +32,10 @@ const LONG_PRESS_TOLERANCE = 10;
 
 function ikey(roomId: string, itemId: string) { return `${roomId}_${itemId}`; }
 
+function itemDescription(item: DwellingFurnitureItem): string {
+    return item.preview || item.description || "";
+}
+
 function formatStageTime(): string {
     const d = new Date();
     let h = d.getHours();
@@ -101,6 +105,7 @@ export function RoomView({
     }, [imageSize, stageSize]);
 
     const markers = useMemo(() => {
+        const hasImage = Boolean(imageUrl);
         const base = (room.furniture || []).map(f => {
             const sourceMarker = f.markerSpace === "image" && f.marker
                 ? f.marker
@@ -116,38 +121,85 @@ export function RoomView({
                 len: 38,
             };
         });
+
+        // Without an image, spread markers vertically with organic-looking offsets
+        // derived from the furniture label (deterministic pseudo-random per item).
+        if (!hasImage && base.length > 1) {
+            // Simple hash from label string → 0..1 (deterministic, no Math.random)
+            const hash01 = (s: string) => {
+                let h = 0;
+                for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+                return ((h & 0x7fffffff) % 1000) / 1000;
+            };
+            const minGapY = 0.09;
+            const rangeY = MK_Y_MAX - MK_Y_MIN;
+            const totalSpan = (base.length - 1) * minGapY;
+            const effectiveGap = totalSpan > rangeY ? rangeY / (base.length - 1) : minGapY;
+            // Spread vertically, then jitter each gap slightly
+            const sorted = [...base].sort((a, b) => a.m.y - b.m.y);
+            const groupHeight = (sorted.length - 1) * effectiveGap;
+            const startY = MK_Y_MIN + (rangeY - groupHeight) / 2;
+            for (let i = 0; i < sorted.length; i++) {
+                const jitterY = (hash01(sorted[i].f.label + "y") - 0.5) * effectiveGap * 0.35;
+                sorted[i].m.y = Math.min(MK_Y_MAX, Math.max(MK_Y_MIN, startY + i * effectiveGap + jitterY));
+            }
+            // Organic x: wander between 0.30–0.65 based on label hash
+            for (let i = 0; i < sorted.length; i++) {
+                const hx = hash01(sorted[i].f.label + "x");
+                sorted[i].m.x = 0.30 + hx * 0.35;
+                sorted[i].h = sorted[i].m.x <= 0.50 ? "right" : "left";
+            }
+        }
+
         if (!stageSize) return base;
         const placed: Array<{ x1: number; x2: number; y1: number; y2: number }> = [];
-        const rectFor = (mk: typeof base[number], h: "left" | "right", len: number) => {
-            const px = mk.m.x * stageSize.w;
-            const py = mk.m.y * stageSize.h;
-            const labelW = Math.max(58, Array.from(mk.f.label).length * 14 + 22, (mk.f.en?.length ?? 0) * 10);
-            const labelH = mk.f.en ? 34 : 16;
+        const rectFor = (px: number, py: number, label: string, en: string | undefined, h: "left" | "right", len: number) => {
+            const labelW = Math.max(58, Array.from(label).length * 17 + 34, (en?.length ?? 0) * 10);
+            const labelH = en ? 36 : 18;
             const x1 = h === "right" ? px + 12 + len : px - 12 - len - labelW;
             return { x1, x2: x1 + labelW, y1: py - 8, y2: py - 8 + labelH };
         };
+        const collides = (rect: { x1: number; x2: number; y1: number; y2: number }) =>
+            placed.some(p => !(rect.x2 + 4 < p.x1 || rect.x1 > p.x2 + 4 || rect.y2 + 2 < p.y1 || rect.y1 > p.y2 + 2));
+        const inBounds = (rect: { x1: number; x2: number; y1: number; y2: number }) =>
+            rect.x1 >= 8 && rect.x2 <= stageSize.w - 8 && rect.y1 >= 8 && rect.y2 <= stageSize.h - 92;
+
         const sorted = [...base].sort((a, b) => a.m.y - b.m.y);
         for (const mk of sorted) {
             const flip = mk.h === "right" ? "left" as const : "right" as const;
-            const attempts: Array<{ h: "left" | "right"; len: number }> = [];
-            for (const len of [4, 12, 24, 38, 56]) {
-                attempts.push({ h: mk.h, len }, { h: flip, len });
-            }
+            // Phase 1: try different len/direction at current y
+            const hOpts: Array<"left" | "right"> = [mk.h, flip];
+            const lenOpts = [4, 12, 24, 38, 56];
             let done = false;
-            for (const at of attempts) {
-                const rect = rectFor(mk, at.h, at.len);
-                if (rect.x1 < 8 || rect.x2 > stageSize.w - 8 || rect.y1 < 8 || rect.y2 > stageSize.h - 92) continue;
-                if (placed.some(p => !(rect.x2 + 4 < p.x1 || rect.x1 > p.x2 + 4 || rect.y2 + 2 < p.y1 || rect.y1 > p.y2 + 2))) continue;
-                mk.h = at.h;
-                mk.len = at.len;
-                placed.push(rect);
-                done = true;
-                break;
+            for (const len of lenOpts) {
+                for (const h of hOpts) {
+                    const rect = rectFor(mk.m.x * stageSize.w, mk.m.y * stageSize.h, mk.f.label, mk.f.en, h, len);
+                    if (!inBounds(rect) || collides(rect)) continue;
+                    mk.h = h; mk.len = len;
+                    placed.push(rect); done = true; break;
+                }
+                if (done) break;
             }
-            if (!done) placed.push(rectFor(mk, mk.h, mk.len));
+            // Phase 2: nudge y position to escape vertical overlap
+            if (!done) {
+                const nudges = [-0.04, 0.04, -0.08, 0.08, -0.12, 0.12, -0.16, 0.16];
+                outer: for (const dy of nudges) {
+                    const ny = mk.m.y + dy;
+                    if (ny < MK_Y_MIN || ny > MK_Y_MAX) continue;
+                    for (const len of lenOpts) {
+                        for (const h of hOpts) {
+                            const rect = rectFor(mk.m.x * stageSize.w, ny * stageSize.h, mk.f.label, mk.f.en, h, len);
+                            if (!inBounds(rect) || collides(rect)) continue;
+                            mk.m.y = ny; mk.h = h; mk.len = len;
+                            placed.push(rect); done = true; break outer;
+                        }
+                    }
+                }
+            }
+            if (!done) placed.push(rectFor(mk.m.x * stageSize.w, mk.m.y * stageSize.h, mk.f.label, mk.f.en, mk.h, mk.len));
         }
         return base;
-    }, [imageToStagePoint, room, room.furniture, stageSize]);
+    }, [imageToStagePoint, imageUrl, room, room.furniture, stageSize]);
 
     // ── 长按拖动标注点 ──
     const [drag, setDrag] = useState<{ id: string; x: number; y: number } | null>(null);
@@ -322,7 +374,7 @@ export function RoomView({
 
             <div className="dw2-scrim-top" />
             <div className="dw2-scrim-bottom" />
-            <div className="dw2-wall">DWELLING</div>
+            <div className="dw2-wall">Dwelling</div>
 
             {/* 状态徽标 */}
             {imageStatus === "failed" && (
@@ -435,7 +487,7 @@ export function RoomView({
                                         <span className="dw2-sno">{String(idx + 1).padStart(2, "0")}</span>
                                         <span className="dw2-stx">
                                             <span className="dw2-sname">{item.name}{html && <em className="dw2-sdone">已探索</em>}</span>
-                                            <span className="dw2-sprev">{item.preview}</span>
+                                            <span className="dw2-sprev">{itemDescription(item)}</span>
                                         </span>
                                         <span className="dw2-sgo">{html ? "›" : isOpen ? "▾" : "›"}</span>
                                     </button>
@@ -506,7 +558,7 @@ function ListFurnitureCard({ room, furniture, itemHtmlCache, loadingItemKeys, la
                                     <span className="dw-item-dot" />
                                     <div className="dw-item-text">
                                         <span className="dw-item-name">{item.name}</span>
-                                        <span className="dw-item-preview">{item.preview}</span>
+                                        <span className="dw-item-preview">{itemDescription(item)}</span>
                                     </div>
                                     <span className="dw-item-go">{html ? "›" : isOpen ? "▾" : "›"}</span>
                                 </button>

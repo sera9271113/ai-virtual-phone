@@ -251,6 +251,8 @@ export type BindingConfig = {
     embeddingApiConfigId?: string;
     /** Auxiliary API: used by the mascot assistant (global, not per-character) */
     mascotApiConfigId?: string;
+    /** Auxiliary API: used to locate furniture in generated dwelling images (global, not per-character) */
+    dwellingFurnitureLocationApiConfigId?: string;
 };
 
 // --- Chat Toolbox ---

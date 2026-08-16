@@ -56,7 +56,7 @@ type Level = "global" | "character" | "app";
 type SingleBindingField = "apiConfigId" | "voiceConfigId" | "presetId" | "userIdentityId";
 type MultiBindingField = "worldBookIds" | "regexIds";
 type BindingField = SingleBindingField | MultiBindingField;
-type AuxBindingField = "memorySummaryApiConfigId" | "embeddingApiConfigId" | "mascotApiConfigId";
+type AuxBindingField = "memorySummaryApiConfigId" | "embeddingApiConfigId" | "mascotApiConfigId" | "dwellingFurnitureLocationApiConfigId";
 
 const APP_OVERRIDE_COLORS = CONTENT_APP_ACCENTS;
 const REGEX_BINDABLE_APP_IDS: ContentAppId[] = ["chat", "group_chat", "story"];
@@ -202,6 +202,10 @@ export function BindingManager() {
             }
             if (prev.mascotApiConfigId && !validSets.api.has(prev.mascotApiConfigId)) {
                 next.mascotApiConfigId = undefined;
+                dirty = true;
+            }
+            if (prev.dwellingFurnitureLocationApiConfigId && !validSets.api.has(prev.dwellingFurnitureLocationApiConfigId)) {
+                next.dwellingFurnitureLocationApiConfigId = undefined;
                 dirty = true;
             }
             if (dirty) {
@@ -430,6 +434,7 @@ export function BindingManager() {
             case "memorySummaryApiConfigId": return "用于聊天记忆压缩";
             case "embeddingApiConfigId": return "用于语义向量召回";
             case "mascotApiConfigId": return "用于小卷对话与工具调用";
+            case "dwellingFurnitureLocationApiConfigId": return "用于识别栖所的家具位置";
         }
     };
 
@@ -438,6 +443,7 @@ export function BindingManager() {
             case "memorySummaryApiConfigId": return "记忆总结 API";
             case "embeddingApiConfigId": return "向量召回 API";
             case "mascotApiConfigId": return "小卷助手 API";
+            case "dwellingFurnitureLocationApiConfigId": return "家具定位 API";
         }
     };
 
@@ -929,6 +935,8 @@ export function BindingManager() {
                             {renderAuxSelect("embeddingApiConfigId", "向量召回 API")}
                             <div className="binding-aux-row-divider" />
                             {renderAuxSelect("mascotApiConfigId", "小卷助手 API")}
+                            <div className="binding-aux-row-divider" />
+                            {renderAuxSelect("dwellingFurnitureLocationApiConfigId", "家具定位 API")}
                         </div>
                     </section>
                 </>
