@@ -12,7 +12,7 @@ import {
     resolveUserIdentity,
 } from "./settings-storage";
 import { assemblePromptPayload, type LLMMessage } from "./llm-prompt-assembler";
-import { previewMessagesForApi, sendLLMRequest, sendLLMStreamRequest } from "./chat-engine";
+import { previewMessagesForApi, sendLLMRequest } from "./chat-engine";
 import { loadMemoryConfig } from "./memory-storage";
 import { retrieveCoreMemoriesForPrompt, retrieveMemoriesForPrompt } from "./memory-service";
 import { formatCoreMemories, formatLongTermMemories } from "./memory-injector";
@@ -20,6 +20,14 @@ import { prepareShortTermContext } from "./short-term-assembler";
 import { buildCalendarScheduleMarker } from "./calendar-storage";
 import { getWeekStartIso } from "./calendar-utils";
 import { jsonrepair } from "jsonrepair";
+
+// ── Truncation detection ──────────────────────
+
+function isTruncatedFinishReason(reason?: string): boolean {
+    if (!reason) return false;
+    const r = reason.trim().toLowerCase();
+    return r === "length" || r === "max_tokens" || r === "max_output_tokens" || r === "max_completion_tokens";
+}
 
 // ── Resolve configs (same pattern as story-engine) ──
 
@@ -162,16 +170,18 @@ function sanitizeLayoutExtras(rooms: DwellingLayout["rooms"]): void {
 
 // ── Strip markdown fences + parse JSON ────────
 
-function extractJSON(text: string): unknown | null {
+type ExtractedJSON = { value: unknown; repaired: boolean } | null;
+
+function extractJSON(text: string): ExtractedJSON {
     let s = text.trim();
     // Strip thinking / reasoning tags
     s = s.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     s = s.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "").trim();
     s = s.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "").trim();
 
-    const tryParse = (candidate: string): unknown | null => {
-        try { return JSON.parse(candidate); } catch { /* try repair below */ }
-        try { return JSON.parse(jsonrepair(candidate)); } catch { return null; }
+    const tryParse = (candidate: string): { value: unknown; repaired: boolean } | null => {
+        try { return { value: JSON.parse(candidate), repaired: false }; } catch { /* try repair below */ }
+        try { return { value: JSON.parse(jsonrepair(candidate)), repaired: true }; } catch { return null; }
     };
 
     // Try markdown fence first
@@ -231,9 +241,9 @@ export async function locateDwellingFurnitureMarkers(
         skipOutputRegex: true,
         appId: "dwelling",
         appTags: ["dwelling", "image-location"],
-        proxyViaServer: true,
     });
-    const parsed = extractJSON(rawOutput);
+    const extracted = extractJSON(rawOutput);
+    const parsed = extracted?.value;
     const entries = parsed && typeof parsed === "object" && Array.isArray((parsed as { furniture?: unknown }).furniture)
         ? (parsed as { furniture: unknown[] }).furniture
         : [];
@@ -264,9 +274,9 @@ export function formatDwellingContext(layout: DwellingLayout, updatedAt: string)
                 const detail = i.preview ? `${i.name}(${i.preview})` : i.name;
                 return detail;
             }).join("、");
-            parts.push(`${f.label}：${items}`);
+            parts.push(`${f.icon} ${f.label}[id=${f.id}]：${items}`);
         }
-        lines.push(`◆ ${room.name}\n  ${parts.join("\n  ")}`);
+        lines.push(`◆ ${room.name}[id=${room.id}]\n  ${parts.join("\n  ")}`);
     }
     return lines.join("\n");
 }
@@ -276,6 +286,33 @@ export function formatDwellingContext(layout: DwellingLayout, updatedAt: string)
 export type DwellingRefreshMode = "full" | "items";
 
 const pendingLayoutGenerations = new Map<string, Promise<{ layout: DwellingLayout | null; error?: string }>>();
+
+/**
+ * 栖所布局/物品是长 JSON 输出，和剧情/聊天一样需要充足的补全空间。
+ *
+ * 关键：不要强制写死一个 max_tokens 值。很多 provider 对 max_tokens 有自己的硬上限，
+ * 显式发送一个偏大的值反而会被 provider 夹回它的默认最大值（如 4096），导致截断。
+ * 正确做法与 story-engine 一致：
+ * - openai_max_tokens=0 表示不发送 max_tokens 参数，让模型用自身默认上限（通常足够大，不截断）
+ * - 若用户显式配置了正数上限，则尊重用户配置，原样透传
+ * 只有当上限被设成一个明显过小、可能沿用聊天场景默认的值时，才清零解除限制。
+ */
+const DWELLING_MIN_SAFE_MAX_TOKENS = 8_192;
+
+function dwellingTextApiConfig(apiConfig: ApiConfig): ApiConfig {
+    const params = apiConfig.generationParams;
+    const configured = params?.openai_max_tokens ?? 0;
+    // 0（未设/不限）或已足够大：原样透传，不做任何干预
+    if (!params || configured === 0 || configured >= DWELLING_MIN_SAFE_MAX_TOKENS) return apiConfig;
+    // 用户设了一个偏小的上限：清零，改为让模型用默认上限，避免长布局被人为截断
+    return {
+        ...apiConfig,
+        generationParams: {
+            ...params,
+            openai_max_tokens: 0,
+        },
+    };
+}
 
 export async function generateDwellingLayout(
     characterId: string,
@@ -304,6 +341,7 @@ async function generateDwellingLayoutOnce(
 ): Promise<{ layout: DwellingLayout | null; error?: string }> {
     const { apiConfig, preset, worldBooks, regexes } = resolveDwellingConfigs(characterId);
     if (!apiConfig) return { layout: null, error: "未找到可用的 API 配置" };
+    const textApiConfig = dwellingTextApiConfig(apiConfig);
 
     // Load existing layout for context injection
     const oldCached = await loadDwellingLayout(characterId);
@@ -317,25 +355,54 @@ async function generateDwellingLayoutOnce(
     try {
         const llmMessages = await buildDwellingMessages(characterId, preset, worldBooks, regexes, appTags, dwellingContext);
 
-        const { content: rawOutput } = await sendLLMStreamRequest(apiConfig, preset, llmMessages, regexes, {
+        let finishReason: string | undefined;
+        const rawOutput = await sendLLMRequest(textApiConfig, preset, llmMessages, regexes, {
             characterName: loadCharacters().find(c => c.id === characterId)?.name,
         }, {
             appId: "dwelling",
             appTags,
-            proxyViaServer: true,
-            signal,
+            skipOutputRegex: true,
+            onResponseMeta: meta => { finishReason = meta.finishReason; },
         });
 
         if (!rawOutput) return { layout: null, error: "LLM 返回为空" };
+        if (isTruncatedFinishReason(finishReason)) {
+            return { layout: null, error: `房间布局输出被截断（finish_reason: ${finishReason}），未保存不完整结果；请提高输出上限后重试` };
+        }
 
-        const parsed = extractJSON(rawOutput);
-        if (!parsed || typeof parsed !== "object") {
+        const extracted = extractJSON(rawOutput);
+        if (!extracted || typeof extracted.value !== "object") {
             return { layout: null, error: "无法解析 LLM 返回的 JSON" };
         }
 
-        const obj = parsed as Record<string, unknown>;
+        const obj = extracted.value as Record<string, unknown>;
         if (!Array.isArray(obj.rooms) || obj.rooms.length === 0) {
             return { layout: null, error: "LLM 返回格式不正确（缺少 rooms）" };
+        }
+
+        // If JSON was repaired and output looks incomplete, treat as truncation
+        if (extracted.repaired) {
+            const lastRoom = obj.rooms[obj.rooms.length - 1];
+            const lastRoomIncomplete = !lastRoom || typeof lastRoom !== "object"
+                || typeof (lastRoom as Record<string, unknown>).id !== "string"
+                || typeof (lastRoom as Record<string, unknown>).name !== "string"
+                || typeof (lastRoom as Record<string, unknown>).description !== "string"
+                || !Array.isArray((lastRoom as Record<string, unknown>).furniture);
+            if (lastRoomIncomplete) {
+                return { layout: null, error: "LLM 返回的 JSON 不完整（疑似输出被截断后由 jsonrepair 修复），未保存不完整结果；请提高输出上限后重试" };
+            }
+        }
+
+        const invalidRoom = obj.rooms.find((room: unknown) => {
+            if (!room || typeof room !== "object") return true;
+            const value = room as Record<string, unknown>;
+            return typeof value.id !== "string"
+                || typeof value.name !== "string"
+                || typeof value.description !== "string"
+                || !Array.isArray(value.furniture);
+        });
+        if (invalidRoom) {
+            return { layout: null, error: "LLM 返回格式不完整：每个房间必须包含 id、name、description 和 furniture" };
         }
 
         let layout = obj as DwellingLayout;
@@ -350,29 +417,36 @@ async function generateDwellingLayoutOnce(
         // Items mode: merge new items into old layout structure
         if (mode === "items" && oldCached) {
             const oldLayout = structuredClone(oldCached.layout);
-            const returnedRooms = new Map(layout.rooms.map(room => [room.id, room]));
+
+            // Build lookup maps: first by ID, then by name as fallback
+            const returnedRoomById = new Map(layout.rooms.map(room => [room.id, room]));
+            const returnedRoomByName = new Map(layout.rooms.map(room => [room.name, room]));
+
             for (const oldRoom of oldLayout.rooms) {
-                const returnedRoom = returnedRooms.get(oldRoom.id);
+                const returnedRoom = returnedRoomById.get(oldRoom.id) ?? returnedRoomByName.get(oldRoom.name);
                 if (!returnedRoom) {
-                    return { layout: null, error: `物品刷新返回不完整：缺少房间「${oldRoom.name}」` };
+                    return { layout: null, error: `物品刷新返回不完整：缺少房间「${oldRoom.name}」（id=${oldRoom.id}）` };
                 }
-                const returnedFurnitureIds = new Set(returnedRoom.furniture.map(furniture => furniture.id));
+                const returnedFurnitureById = new Map(returnedRoom.furniture.map(f => [f.id, f]));
+                const returnedFurnitureByLabel = new Map(returnedRoom.furniture.map(f => [f.label, f]));
                 for (const oldFurniture of oldRoom.furniture) {
-                    if (!returnedFurnitureIds.has(oldFurniture.id)) {
-                        return { layout: null, error: `物品刷新返回不完整：缺少「${oldRoom.name}」中的家具「${oldFurniture.label}」` };
+                    const matchedFurniture = returnedFurnitureById.get(oldFurniture.id) ?? returnedFurnitureByLabel.get(oldFurniture.label);
+                    if (!matchedFurniture) {
+                        return { layout: null, error: `物品刷新返回不完整：缺少「${oldRoom.name}」中的家具「${oldFurniture.label}」（id=${oldFurniture.id}）` };
                     }
                 }
             }
-            const newItemsMap = new Map<string, typeof layout.rooms[0]["furniture"][0]["items"]>();
-            for (const room of layout.rooms) {
-                for (const f of room.furniture) {
-                    newItemsMap.set(`${room.id}_${f.id}`, f.items);
-                }
-            }
-            for (const room of oldLayout.rooms) {
-                for (const f of room.furniture) {
-                    const newItems = newItemsMap.get(`${room.id}_${f.id}`);
-                    if (newItems) f.items = newItems;
+            // Merge new items into old structure
+            for (const oldRoom of oldLayout.rooms) {
+                const returnedRoom = returnedRoomById.get(oldRoom.id) ?? returnedRoomByName.get(oldRoom.name);
+                if (!returnedRoom) continue;
+                const returnedFurnitureById = new Map(returnedRoom.furniture.map(f => [f.id, f]));
+                const returnedFurnitureByLabel = new Map(returnedRoom.furniture.map(f => [f.label, f]));
+                for (const f of oldRoom.furniture) {
+                    const matchedFurniture = returnedFurnitureById.get(f.id) ?? returnedFurnitureByLabel.get(f.label);
+                    if (matchedFurniture && Array.isArray(matchedFurniture.items)) {
+                        f.items = matchedFurniture.items;
+                    }
                 }
             }
             layout = oldLayout;
@@ -399,6 +473,7 @@ export async function generateItemHtml(
 ): Promise<{ html: string | null; error?: string }> {
     const { apiConfig, preset, worldBooks, regexes } = resolveDwellingConfigs(characterId);
     if (!apiConfig) return { html: null, error: "未找到可用的 API 配置" };
+    const textApiConfig = dwellingTextApiConfig(apiConfig);
     const appTags = ["dwelling", "explore"];
 
     try {
@@ -408,12 +483,12 @@ export async function generateItemHtml(
             undefined,
             { dwellingRoom: roomName, dwellingFurniture: furnitureLabel, dwellingItem: itemName, dwellingItemPreview: itemPreview },
         );
-        const { content: rawOutput } = await sendLLMStreamRequest(apiConfig, preset, llmMessages, regexes, {
+        const rawOutput = await sendLLMRequest(textApiConfig, preset, llmMessages, regexes, {
             characterName: loadCharacters().find(c => c.id === characterId)?.name,
         }, {
             appId: "dwelling",
             appTags,
-            proxyViaServer: true,
+            skipOutputRegex: true,
         });
 
         return { html: rawOutput || null };

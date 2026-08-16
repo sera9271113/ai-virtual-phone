@@ -822,6 +822,7 @@ export async function sendLLMRequest(
         debugSessionId?: string;
         signal?: AbortSignal;
         proxyViaServer?: boolean;
+        onResponseMeta?: (meta: { finishReason?: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }) => void;
     },
 ): Promise<string> {
     const requestMessages = toLlmRequestMessages(messages);
@@ -872,6 +873,12 @@ export async function sendLLMRequest(
 
         const data = await response.json();
         const parsed = parseProviderResponse(request.providerKind, data);
+        options?.onResponseMeta?.({
+            finishReason: parsed.raw && typeof parsed.raw === "object"
+                ? extractFinishReason(parsed.raw as Record<string, unknown>)
+                : undefined,
+            usage: parsed.usage,
+        });
         let rawOutput = parsed.content || "";
 
         // Prepend reasoning content as <think> block (only when caller requests it, e.g. story mode)
