@@ -1,4 +1,4 @@
-import type { DwellingFurniture, DwellingLayout, DwellingMarker, DwellingPosition, DwellingRoom } from "./dwelling-storage";
+import type { DwellingFurniture, DwellingFurnitureItem, DwellingLayout, DwellingMarker, DwellingPosition, DwellingRoom } from "./dwelling-storage";
 import { loadDwellingLayout } from "./dwelling-storage";
 import type { ApiConfig, PresetConfig, RegexConfig, WorldBookConfig } from "./settings-types";
 import { loadCharacters } from "./character-storage";
@@ -289,7 +289,7 @@ export function formatDwellingContext(layout: DwellingLayout, updatedAt: string)
         const parts: string[] = [];
         for (const f of room.furniture) {
             const items = f.items.map(i => {
-                const detail = i.preview ? `${i.name}(${i.preview})` : i.name;
+                const detail = i.preview ? `${i.name}[id=${i.id}](${i.preview})` : `${i.name}[id=${i.id}]`;
                 return detail;
             }).join("、");
             parts.push(`${f.icon} ${f.label}[id=${f.id}]：${items}`);
@@ -394,67 +394,34 @@ async function generateDwellingLayoutOnce(
         }
 
         const obj = extracted.value as Record<string, unknown>;
-        if (!Array.isArray(obj.rooms) || obj.rooms.length === 0) {
-            return { layout: null, error: "LLM 返回格式不正确（缺少 rooms）" };
-        }
 
         let layout: DwellingLayout;
 
-        // Items mode only needs stable room/furniture identifiers and refreshed items.
+        // Items mode returns only furniture identifiers and their refreshed items.
         if (mode === "items" && oldCached) {
-            const invalidItemsResponse = obj.rooms.find((room: unknown) => {
-                if (!room || typeof room !== "object") return true;
-                const value = room as Record<string, unknown>;
-                if (typeof value.id !== "string" || typeof value.name !== "string" || !Array.isArray(value.furniture)) return true;
-                return value.furniture.some((furniture: unknown) => {
-                    if (!furniture || typeof furniture !== "object") return true;
-                    const item = furniture as Record<string, unknown>;
-                    return typeof item.id !== "string"
-                        || (typeof item.label !== "string" && typeof item.name !== "string")
-                        || !Array.isArray(item.items);
-                });
-            });
-            if (invalidItemsResponse) {
-                return { layout: null, error: "物品刷新返回格式不完整：每个房间和家具必须包含 id、名称及 items" };
+            if (!Array.isArray(obj.furnitureItems) || obj.furnitureItems.length === 0) {
+                return { layout: null, error: "物品刷新返回格式不正确（缺少 furnitureItems）" };
             }
 
             const oldLayout = structuredClone(oldCached.layout);
-
-            const returnedRooms = obj.rooms as Record<string, unknown>[];
-            const returnedRoomById = new Map(returnedRooms.map(room => [room.id as string, room]));
-            const returnedRoomByName = new Map(returnedRooms.map(room => [room.name as string, room]));
-
-            for (const oldRoom of oldLayout.rooms) {
-                const returnedRoom = returnedRoomById.get(oldRoom.id) ?? returnedRoomByName.get(oldRoom.name);
-                if (!returnedRoom) {
-                    return { layout: null, error: `物品刷新返回不完整：缺少房间「${oldRoom.name}」（id=${oldRoom.id}）` };
-                }
-                const returnedFurniture = returnedRoom.furniture as Record<string, unknown>[];
-                const returnedFurnitureById = new Map(returnedFurniture.map(f => [f.id as string, f]));
-                const returnedFurnitureByName = new Map(returnedFurniture.map(f => [String(f.label ?? f.name), f]));
-                for (const oldFurniture of oldRoom.furniture) {
-                    const matchedFurniture = returnedFurnitureById.get(oldFurniture.id) ?? returnedFurnitureByName.get(oldFurniture.label);
-                    if (!matchedFurniture) {
-                        return { layout: null, error: `物品刷新返回不完整：缺少「${oldRoom.name}」中的家具「${oldFurniture.label}」（id=${oldFurniture.id}）` };
-                    }
+            let updatedFurnitureCount = 0;
+            for (const entry of obj.furnitureItems as unknown[]) {
+                if (!entry || typeof entry !== "object") continue;
+                const value = entry as Record<string, unknown>;
+                if (typeof value.roomId !== "string" || typeof value.furnitureId !== "string" || !Array.isArray(value.items)) continue;
+                const room = oldLayout.rooms.find(candidate => candidate.id === value.roomId);
+                const furniture = room?.furniture.find(candidate => candidate.id === value.furnitureId);
+                if (furniture) {
+                    furniture.items = value.items as DwellingFurnitureItem[];
+                    updatedFurnitureCount += 1;
                 }
             }
-            // Merge new items into old structure
-            for (const oldRoom of oldLayout.rooms) {
-                const returnedRoom = returnedRoomById.get(oldRoom.id) ?? returnedRoomByName.get(oldRoom.name);
-                if (!returnedRoom) continue;
-                const returnedFurniture = returnedRoom.furniture as Record<string, unknown>[];
-                const returnedFurnitureById = new Map(returnedFurniture.map(f => [f.id as string, f]));
-                const returnedFurnitureByName = new Map(returnedFurniture.map(f => [String(f.label ?? f.name), f]));
-                for (const f of oldRoom.furniture) {
-                    const matchedFurniture = returnedFurnitureById.get(f.id) ?? returnedFurnitureByName.get(f.label);
-                    if (matchedFurniture && Array.isArray(matchedFurniture.items)) {
-                        f.items = matchedFurniture.items;
-                    }
-                }
-            }
+            if (updatedFurnitureCount === 0) return { layout: null, error: "物品刷新结果没有匹配到已有家具" };
             layout = oldLayout;
         } else {
+            if (!Array.isArray(obj.rooms) || obj.rooms.length === 0) {
+                return { layout: null, error: "LLM 返回格式不正确（缺少 rooms）" };
+            }
             // Full layout mode still requires the complete persisted layout shape.
             if (extracted.repaired) {
                 const lastRoom = obj.rooms[obj.rooms.length - 1];

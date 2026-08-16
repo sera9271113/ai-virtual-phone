@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Armchair, ChevronLeft, RefreshCw, Trash2, Wand2, X } from "lucide-react";
+import { Armchair, ChevronLeft, LoaderCircle, RefreshCw, Trash2, Wand2, X } from "lucide-react";
 import type { Character } from "@/lib/character-types";
 import { loadCharacters } from "@/lib/character-storage";
 import type { DwellingLayout, DwellingRoom, DwellingFurniture, DwellingFurnitureItem } from "@/lib/dwelling-storage";
@@ -404,7 +404,8 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
                                 data-active={activeCharId === c.id ? "true" : undefined}
                                 onClick={() => { setActiveCharId(c.id); setActiveRoomIdx(0); setItemDetail(null); setRoomMenuOpen(false); }}>
                                 {s.layout && <span className="dw-char-status-dot" aria-hidden="true" />}
-                                <span className="dw-chip-zh">{c.name}{s.isGenerating ? " …" : ""}</span>
+                                <span className="dw-chip-zh">{c.name}</span>
+                                {s.isGenerating && s.layout && <LoaderCircle className="dw-char-loading" size={14} aria-label="正在刷新物品" />}
                             </button>
                         );
                     })}
@@ -419,9 +420,6 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
             )}
             {cs?.isGenerating && !cs.layout && (
                 <div className="dwelling-loading"><div className="dwelling-spinner" /><span className="dwelling-loading-text">正在窥探房间…</span></div>
-            )}
-            {cs?.isGenerating && cs.layout && (
-                <div className="dwelling-loading-bar"><span className="dwelling-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /><span>刷新中…</span></div>
             )}
             {cs && (cs.error || cs.lastItemError) && (
                 <div className="dw-confirm-overlay">

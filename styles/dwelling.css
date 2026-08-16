@@ -140,6 +140,10 @@
   box-shadow: 0 0 5px rgba(164, 177, 122, 0.28);
   flex-shrink: 0;
 }
+.dw-char-loading {
+  flex-shrink: 0;
+  animation: dw-spin 0.9s linear infinite;
+}
 
 /* ── Empty / loading / error states ── */
 .dwelling-empty {
@@ -896,7 +900,9 @@
 .dwelling-detail-card {
   position: relative;
   width: 100%;
+  height: min(86%, 760px);
   max-height: 86%;
+  min-height: 0;
   background: var(--dw-panel);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
@@ -949,9 +955,11 @@
 }
 .dwelling-detail-html {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 12px 14px calc(18px + env(safe-area-inset-bottom, 0px));
-  min-height: 120px;
 }
 
 /* Keep Chinese UI text as compact as the room description copy. */

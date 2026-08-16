@@ -1364,7 +1364,7 @@ export function updateMessageMediaUrl(messageId: string, mediaUrl: string) {
 
 export function updateChatMessage(
     messageId: string,
-    patch: Partial<Pick<ChatMessage, "role" | "content" | "mediaType" | "mediaUrl" | "mediaData">>,
+    patch: Partial<Pick<ChatMessage, "role" | "content" | "mediaType" | "mediaUrl" | "mediaData" | "rawResponseText" | "responseBatchId" | "responseRoundId">>,
 ): ChatMessage | null {
     const idx = _messagesCache.findIndex(m => m.id === messageId);
     if (idx === -1) return null;

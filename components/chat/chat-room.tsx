@@ -4292,11 +4292,26 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
             return;
         }
         setActiveMessageId(null);
-        const targetMsg = loadChatMessages(session.id).find(m => m.id === msgId);
+        const storedMessages = loadChatMessages(session.id);
+        const storedMessageId = projectedMessages.find(message => message.id === msgId)?.displaySourceId || msgId;
+        const targetMsg = storedMessages.find(m => m.sessionId === session.id && m.id === storedMessageId);
         if (!targetMsg) return;
+        const selectedMessageId = targetMsg.id;
         void deleteWeixinCloudBeforeLocal([targetMsg], () => {
-            deleteChatMessage(msgId);
-            setMessages(prev => prev.filter(m => m.id !== msgId));
+            if (targetMsg.responseBatchId && targetMsg.rawResponseText?.trim()) {
+                for (const message of storedMessages) {
+                    if (message.id === selectedMessageId) continue;
+                    if (message.responseBatchId !== targetMsg.responseBatchId) continue;
+                    if ((message.responseRoundId || "") !== (targetMsg.responseRoundId || "")) continue;
+                    updateChatMessage(message.id, {
+                        rawResponseText: undefined,
+                        responseBatchId: undefined,
+                        responseRoundId: undefined,
+                    });
+                }
+            }
+            deleteChatMessage(selectedMessageId);
+            syncMessagesFromStorage();
         });
     };
 
