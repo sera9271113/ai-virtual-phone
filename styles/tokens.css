@@ -128,8 +128,8 @@
   --c-calendar-weekend: #C5BEC0;
   --c-calendar-action: #E8D5DB;
   /* 弹窗按钮/图标强调色 */
-  --c-calendar-modal-pink: rgba(255, 255, 255, 0.94);
-  --c-calendar-modal-blue: rgba(255, 255, 255, 0.94);
+  --c-calendar-modal-pink: rgba(255, 255, 255, 0.7);
+  --c-calendar-modal-blue: rgba(255, 255, 255, 0.7);
 
   /* ── 阴影与毛玻璃辅助层 (Glass Layers - 全主题通用) ── */
   --c-calendar-panel: rgba(255, 255, 255, 0.7);

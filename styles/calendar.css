@@ -1333,7 +1333,7 @@
 }
 
 .calendar-hero-kicker {
-  background: linear-gradient(135deg, rgba(216, 216, 215, 0.6), rgba(255, 255, 255, 0.9));
+  background: linear-gradient(135deg, rgba(226, 226, 225, 0.72), rgba(255, 255, 255, 0.96));
   color: #797877;
   box-shadow: 0 2px 6px rgba(213, 213, 211, 0.25);
 }
@@ -1590,19 +1590,19 @@
 .calendar-fab-primary {
   background: linear-gradient(135deg, var(--c-calendar-accent), var(--c-calendar-weekend));
   color: var(--c-calendar-glass-full);
-  box-shadow: 0 12px 32px var(--c-calendar-accent-dim), inset 0 2px 4px var(--c-calendar-glass-4);
+  box-shadow: 0 12px 32px rgba(235, 153, 180, 0.24), inset 0 2px 4px var(--c-calendar-glass-4);
   border: 1px solid var(--c-calendar-glass-6);
 }
 
 .calendar-fab-primary:hover {
-  box-shadow: 0 16px 40px var(--c-calendar-accent-dim), inset 0 2px 4px var(--c-calendar-glass-6);
+  box-shadow: 0 16px 40px rgba(235, 153, 180, 0.3), inset 0 2px 4px var(--c-calendar-glass-6);
 }
 
 .calendar-fab-secondary {
   background: var(--c-calendar-glass-9);
   border: 1px solid var(--c-calendar-glass-full);
   color: var(--c-calendar-accent);
-  box-shadow: 0 8px 24px var(--c-calendar-shadow-6);
+  box-shadow: 0 8px 24px rgba(235, 153, 180, 0.2);
 }
 
 .calendar-fab[data-loading="true"] {
