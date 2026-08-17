@@ -188,6 +188,7 @@ export function PhoneCalendarApp({
   const [isGenerating, setIsGenerating] = useState(false);
   const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
   const [showAutoConfirm, setShowAutoConfirm] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => new Date());
   const autoAttemptedRef = useRef<Set<string>>(new Set());
   const [editingItem, setEditingItem] = useState<{
     id?: string;
@@ -244,6 +245,11 @@ export function PhoneCalendarApp({
 
   useEffect(() => {
     setOwners(buildOwnerOptions());
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(new Date()), 30_000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const ownerStripRef = useRef<HTMLElement>(null);
@@ -538,7 +544,8 @@ export function PhoneCalendarApp({
     return `${date.getMonth() + 1}月${date.getDate()}日`;
   };
 
-  const todayIso = formatIsoDate(new Date());
+  const todayIso = formatIsoDate(currentTime);
+  const currentClock = `${String(currentTime.getHours()).padStart(2, "0")}:${String(currentTime.getMinutes()).padStart(2, "0")}`;
   const canCancelSelectedStart = menstrualSummary.currentPeriodStartDate === selectedDate && !menstrualSummary.todayFinished;
   const canStartSelected = !menstrualSummary.todayStarted && !menstrualSummary.isPeriodActive;
   const canCancelSelectedFinish = menstrualSummary.todayFinished;
@@ -635,7 +642,9 @@ export function PhoneCalendarApp({
                         const hasItems = countsByDate.has(date);
                         const isOutside = !isSameMonth(date, weekStart);
                         const isInWeek = isDateInWeek(date, weekStart);
-                        const menstrualState = selectedOwner?.ownerType === "user" ? weekMenstrualMap.get(date) || menstrualDayMap.get(date) : null;
+                        const menstrualState = !isOutside && selectedOwner?.ownerType === "user"
+                          ? weekMenstrualMap.get(date) || menstrualDayMap.get(date)
+                          : null;
                         return (
                           <button
                             key={date}
@@ -690,8 +699,8 @@ export function PhoneCalendarApp({
                     {menstrualSummary.isPeriodActive
                       ? `本次经期从 ${formatSimpleDate(menstrualSummary.currentPeriodStartDate)} 开始`
                       : menstrualSummary.latest
-                        ? "已根据最近记录在日历中标注预测经期和排卵期"
-                        : "点按“经期来了”后，会自动开始预测经期和排卵期"}
+                        ? "已根据最近记录在日历中标注预计周期阶段"
+                        : "点按“经期来了”后，会自动开始预测周期阶段"}
                   </span>
                 </div>
                 <button
@@ -757,9 +766,9 @@ export function PhoneCalendarApp({
 
               <div className="calendar-menstrual-legend">
                 <span data-type="period">经期</span>
-                <span data-type="predicted_period">预计</span>
-                <span data-type="fertile">易孕</span>
-                <span data-type="ovulation">排卵</span>
+                <span data-type="follicular">卵泡期</span>
+                <span data-type="ovulation">排卵期</span>
+                <span data-type="luteal">黄体期</span>
               </div>
             </div>
           ) : null}
@@ -813,34 +822,40 @@ export function PhoneCalendarApp({
               />
             ) : (
               <div className="calendar-day-list">
-                {dayItems.map(item => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="calendar-day-list-item"
-                    data-color={item.colorKey}
-                    onClick={() =>
-                      setEditingItem({
-                        id: item.id,
-                        date: item.date,
-                        startTime: item.startTime,
-                        endTime: item.endTime,
-                        location: item.location,
-                        title: item.title,
-                      })
-                    }
-                  >
-                    <span className="calendar-day-list-dot" aria-hidden="true" />
-                    <div className="calendar-day-list-time">
-                      <span>{item.startTime}</span>
-                      <span>{item.endTime}</span>
-                    </div>
-                    <div className="calendar-day-list-main">
-                      <strong>{item.title}</strong>
-                      <span><MapPin size={12} />{item.location || "未定"}</span>
-                    </div>
-                  </button>
-                ))}
+                {dayItems.map(item => {
+                  const isCurrent = selectedDate === todayIso && item.startTime <= currentClock && currentClock < item.endTime;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="calendar-day-list-item"
+                      data-color={item.colorKey}
+                      data-current={isCurrent ? "true" : undefined}
+                      aria-current={isCurrent ? "time" : undefined}
+                      onClick={() =>
+                        setEditingItem({
+                          id: item.id,
+                          date: item.date,
+                          startTime: item.startTime,
+                          endTime: item.endTime,
+                          location: item.location,
+                          title: item.title,
+                        })
+                      }
+                    >
+                      <span className="calendar-day-list-dot" aria-hidden="true" />
+                      <div className="calendar-day-list-time">
+                        <span>{item.startTime}</span>
+                        <span>{item.endTime}</span>
+                      </div>
+                      <div className="calendar-day-list-main">
+                        <strong>{item.title}</strong>
+                        <span><MapPin size={12} />{item.location || "未定"}</span>
+                      </div>
+                      {isCurrent ? <span className="calendar-day-list-current">进行中</span> : null}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -890,8 +905,9 @@ export function PhoneCalendarApp({
                 <X size={18} />
               </button>
             </div>
-            <div className="flex flex-wrap gap-3 justify-start">
+            <div className="calendar-theme-options">
               {[
+                { id: "warm-gray", color: "#D5D5D4", name: "暖灰" },
                 { id: "ocean", color: "#7BC6EC", name: "海洋" },
                 { id: "orange", color: "#FF7E5F", name: "橘汽" },
                 { id: "honey", color: "#D4A373", name: "蜜糖" },
@@ -906,11 +922,11 @@ export function PhoneCalendarApp({
                     setConfig(nextConfig);
                     saveCalendarConfig(nextConfig);
                   }}
-                  className="flex flex-col items-center gap-1"
+                  className="calendar-theme-option"
                 >
                   <div
+                    className="calendar-theme-swatch"
                     style={{
-                      width: 32, height: 32, borderRadius: "50%",
                       background: t.color,
                       border: config.theme === t.id ? "2px solid var(--c-calendar-text)" : "2px solid transparent",
                       boxShadow: "0 2px 8px rgba(0,0,0,0.1)",

@@ -28,7 +28,7 @@ export type MenstrualRecord = {
   updatedAt: string;
 };
 
-export type MenstrualDayType = "period" | "predicted_period" | "fertile" | "ovulation";
+export type MenstrualDayType = "period" | "predicted_period" | "follicular" | "ovulation" | "luteal";
 
 export type MenstrualDayState = {
   type: MenstrualDayType;
@@ -379,13 +379,24 @@ export function buildMenstrualDayMap(
     }
 
     const ovulationDate = addDays(predictedStart, -14);
-    if (ovulationDate >= rangeStart && ovulationDate <= rangeEnd) {
-      setDayState(result, ovulationDate, { type: "ovulation", label: "预计排卵", shortLabel: "排卵" });
-    }
-    for (let offset = -5; offset <= 1; offset += 1) {
-      const date = addDays(ovulationDate, offset);
+    const previousPeriodStart = addDays(predictedStart, -config.cycleLength);
+    const follicularStart = addDays(previousPeriodStart, config.periodLength);
+    const ovulationPhaseStart = addDays(ovulationDate, -1);
+    const ovulationPhaseEnd = addDays(ovulationDate, 1);
+    const lutealStart = addDays(ovulationPhaseEnd, 1);
+    const lutealEnd = addDays(predictedStart, -1);
+
+    for (const date of eachDateInclusive(follicularStart, addDays(ovulationPhaseStart, -1))) {
       if (date < rangeStart || date > rangeEnd) continue;
-      setDayState(result, date, { type: "fertile", label: "易孕期", shortLabel: "易孕" });
+      setDayState(result, date, { type: "follicular", label: "预计卵泡期", shortLabel: "卵泡期" });
+    }
+    for (const date of eachDateInclusive(ovulationPhaseStart, ovulationPhaseEnd)) {
+      if (date < rangeStart || date > rangeEnd) continue;
+      setDayState(result, date, { type: "ovulation", label: "预计排卵期", shortLabel: "排卵期" });
+    }
+    for (const date of eachDateInclusive(lutealStart, lutealEnd)) {
+      if (date < rangeStart || date > rangeEnd) continue;
+      setDayState(result, date, { type: "luteal", label: "预计黄体期", shortLabel: "黄体期" });
     }
 
     predictedStart = addDays(predictedStart, config.cycleLength);

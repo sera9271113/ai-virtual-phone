@@ -32,7 +32,7 @@ export type CalendarConfig = {
 
 const DEFAULT_CALENDAR_CONFIG: CalendarConfig = {
   autoGenerateEnabled: false,
-  theme: "ocean",
+  theme: "warm-gray",
 };
 
 function loadStore(): PersistedCalendarStore {

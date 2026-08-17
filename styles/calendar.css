@@ -355,7 +355,7 @@
   color: var(--c-calendar-weekend);
 }
 
-.calendar-menstrual-title-tag[data-type="fertile"] {
+.calendar-menstrual-title-tag[data-type="follicular"] {
   background: color-mix(in srgb, var(--c-calendar-event-green) 18%, var(--c-calendar-glass-4));
   color: var(--c-calendar-event-green);
 }
@@ -363,6 +363,11 @@
 .calendar-menstrual-title-tag[data-type="ovulation"] {
   background: color-mix(in srgb, var(--c-calendar-event-amber) 18%, var(--c-calendar-glass-4));
   color: var(--c-calendar-event-amber);
+}
+
+.calendar-menstrual-title-tag[data-type="luteal"] {
+  background: color-mix(in srgb, var(--c-calendar-accent) 16%, var(--c-calendar-glass-4));
+  color: var(--c-calendar-accent);
 }
 
 .calendar-menstrual-copy > span:last-child {
@@ -534,8 +539,8 @@
   color: var(--c-calendar-weekend);
 }
 
-.calendar-menstrual-legend span[data-type="fertile"],
-[data-type="fertile"] {
+.calendar-menstrual-legend span[data-type="follicular"],
+[data-type="follicular"] {
   background: color-mix(in srgb, var(--c-calendar-event-green) 18%, var(--c-calendar-glass-4));
   color: var(--c-calendar-event-green);
 }
@@ -544,6 +549,12 @@
 [data-type="ovulation"] {
   background: color-mix(in srgb, var(--c-calendar-event-amber) 18%, var(--c-calendar-glass-4));
   color: var(--c-calendar-event-amber);
+}
+
+.calendar-menstrual-legend span[data-type="luteal"],
+[data-type="luteal"] {
+  background: color-mix(in srgb, var(--c-calendar-accent) 16%, var(--c-calendar-glass-4));
+  color: var(--c-calendar-accent);
 }
 
 .calendar-menstrual-record-chip {
@@ -818,6 +829,7 @@
 
 .calendar-unified-cell[data-outside="true"] {
   color: color-mix(in srgb, var(--c-calendar-sub) 35%, transparent);
+  opacity: 0.38;
 }
 
 .calendar-unified-cell[data-in-week="true"] .calendar-unified-date {
@@ -826,20 +838,24 @@
 }
 
 .calendar-unified-cell[data-selected="true"] .calendar-unified-date {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-calendar-accent) 38%, transparent);
-  border-radius: 50%;
+  background: transparent;
+  color: var(--c-calendar-text);
+  font-weight: 500;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .calendar-unified-cell[data-has-items="true"] .calendar-unified-date {
-  background: linear-gradient(135deg, var(--c-calendar-accent), var(--c-calendar-weekend));
-  color: var(--c-calendar-glass-full);
-  width: 26px;
-  height: 26px;
+  background: transparent;
+  color: var(--c-calendar-accent);
+  font-weight: 500;
+  width: auto;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  box-shadow: 0 3px 8px var(--c-calendar-accent-dim);
+  border-radius: 0;
+  box-shadow: none;
   font-size: calc(12px*var(--app-text-scale,1));
 }
 
@@ -860,37 +876,38 @@
 }
 
 .calendar-unified-cell[data-cycle="period"] .calendar-unified-date {
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--c-calendar-event-rose) 92%, white), var(--c-calendar-event-rose));
-  color: var(--c-calendar-glass-full);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--c-calendar-event-rose) 28%, transparent);
+  background: transparent;
+  color: var(--c-calendar-cycle-period);
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .calendar-unified-cell[data-cycle="predicted_period"] .calendar-unified-date {
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--c-calendar-weekend) 18%, var(--c-calendar-glass-4));
-  color: var(--c-calendar-weekend);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-calendar-weekend) 45%, transparent);
+  background: transparent;
+  color: var(--c-calendar-cycle-predicted);
+  box-shadow: none;
+  border-radius: 0;
 }
 
-.calendar-unified-cell[data-cycle="fertile"] .calendar-unified-date {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-calendar-event-green) 24%, transparent);
-  border-radius: 50%;
+.calendar-unified-cell[data-cycle="follicular"] .calendar-unified-date {
+  background: transparent;
+  color: var(--c-calendar-cycle-follicular);
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .calendar-unified-cell[data-cycle="ovulation"] .calendar-unified-date {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-calendar-event-amber) 28%, transparent);
-  border-radius: 50%;
+  background: transparent;
+  color: var(--c-calendar-cycle-ovulation);
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.calendar-unified-cell[data-cycle="luteal"] .calendar-unified-date {
+  background: transparent;
+  color: var(--c-calendar-cycle-luteal);
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .calendar-unified-date {
@@ -923,27 +940,8 @@
   display: none;
 }
 
-.calendar-unified-cycle-dot[data-type="period"] {
-  width: 12px;
-  border-radius: 999px;
-  background: var(--c-calendar-event-rose);
-}
-
-.calendar-unified-cycle-dot[data-type="predicted_period"] {
-  width: 12px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--c-calendar-weekend) 70%, white);
-}
-
-.calendar-unified-cycle-dot[data-type="fertile"] {
-  background: var(--c-calendar-event-green);
-}
-
-.calendar-unified-cycle-dot[data-type="ovulation"] {
-  width: 6px;
-  height: 6px;
-  background: var(--c-calendar-event-amber);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-calendar-event-amber) 18%, transparent);
+.calendar-unified-cell[data-cycle] .calendar-unified-cycle-dot {
+  display: none;
 }
 
 /* ── Timeline Grid Card ── */
@@ -1046,7 +1044,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-calendar-weekend) 16%, transparent);
 }
 
-.calendar-grid-day-phase-dot[data-type="fertile"] {
+.calendar-grid-day-phase-dot[data-type="follicular"] {
   background: var(--c-calendar-event-green);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-calendar-event-green) 16%, transparent);
 }
@@ -1054,6 +1052,11 @@
 .calendar-grid-day-phase-dot[data-type="ovulation"] {
   background: var(--c-calendar-event-amber);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-calendar-event-amber) 16%, transparent);
+}
+
+.calendar-grid-day-phase-dot[data-type="luteal"] {
+  background: var(--c-calendar-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-calendar-accent) 16%, transparent);
 }
 
 /* ── Day schedule list (replaces the old time-axis week grid) ── */
@@ -1070,9 +1073,9 @@
   align-items: center;
   gap: 12px;
   padding: 10px 12px 10px 16px;
-  border-radius: 14px;
-  border: 1px solid var(--c-calendar-glass-5);
-  background: var(--c-calendar-glass-1);
+  border-radius: 0;
+  border: none;
+  background: transparent;
   cursor: pointer;
   text-align: left;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1082,13 +1085,34 @@
   transform: scale(0.98);
 }
 
+.calendar-day-list-item[data-current="true"] {
+  border-color: color-mix(in srgb, var(--event-color, var(--c-calendar-accent)) 48%, transparent);
+  background: color-mix(in srgb, var(--event-color, var(--c-calendar-accent)) 12%, var(--c-calendar-glass-1));
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--event-color, var(--c-calendar-accent)) 18%, transparent);
+}
+
+.calendar-day-list-item[data-current="true"] .calendar-day-list-dot {
+  display: none;
+}
+
+.calendar-day-list-current {
+  flex-shrink: 0;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--event-color, var(--c-calendar-accent));
+  color: var(--c-calendar-glass-full);
+  font-size: calc(9px*var(--app-text-scale,1));
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 .calendar-day-list-dot {
   position: absolute;
   left: 0;
-  top: 8px;
-  bottom: 8px;
+  top: 0;
+  bottom: 0;
   width: 4px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--event-color, var(--c-calendar-accent));
 }
 
@@ -1179,6 +1203,288 @@
 
 .calendar-day-list-item[data-color="lilac"] {
   --event-color: var(--c-calendar-event-purple);
+}
+
+/* ── Warm gray default theme refinements ── */
+.calendar-owner-chip {
+  border-radius: 20px;
+}
+
+.calendar-app .ui-avatar {
+  border: none;
+  box-shadow: 0 2px 8px rgba(127, 127, 126, 0.2);
+}
+
+.calendar-grid-shell {
+  border-radius: 18px;
+}
+
+.calendar-grid-card {
+  border-radius: 10px;
+}
+
+.calendar-event-block,
+.calendar-unified-cell {
+  border-radius: 8px;
+}
+
+.calendar-unified-cell[data-has-items="true"] .calendar-unified-date {
+  color: var(--c-calendar-text);
+  font-weight: 500;
+  background: transparent;
+  box-shadow: none;
+}
+
+.calendar-unified-cell[data-cycle="period"] .calendar-unified-date {
+  background: transparent;
+  color: var(--c-calendar-cycle-period);
+  box-shadow: none;
+}
+
+.calendar-unified-cell[data-cycle="predicted_period"] .calendar-unified-date {
+  background: transparent;
+  color: var(--c-calendar-cycle-predicted);
+  box-shadow: none;
+}
+
+.calendar-unified-cell[data-cycle="follicular"] .calendar-unified-date {
+  background: transparent;
+  color: var(--c-calendar-cycle-follicular);
+  box-shadow: none;
+}
+
+.calendar-unified-cell[data-cycle="ovulation"] .calendar-unified-date {
+  background: transparent;
+  color: var(--c-calendar-cycle-ovulation);
+  box-shadow: none;
+}
+
+.calendar-unified-cell[data-cycle="luteal"] .calendar-unified-date {
+  background: transparent;
+  color: var(--c-calendar-cycle-luteal);
+  box-shadow: none;
+}
+
+.calendar-menstrual-legend span[data-type="period"],
+.calendar-menstrual-title-tag[data-type="period"] {
+  background: rgba(201, 53, 69, 0.12);
+  color: var(--c-calendar-cycle-period);
+}
+
+.calendar-menstrual-legend span[data-type="predicted_period"],
+.calendar-menstrual-title-tag[data-type="predicted_period"] {
+  background: rgba(232, 137, 74, 0.12);
+  color: var(--c-calendar-cycle-predicted);
+}
+
+.calendar-menstrual-legend span[data-type="follicular"],
+.calendar-menstrual-title-tag[data-type="follicular"] {
+  background: rgba(240, 147, 156, 0.12);
+  color: var(--c-calendar-cycle-follicular);
+}
+
+.calendar-menstrual-legend span[data-type="ovulation"],
+.calendar-menstrual-title-tag[data-type="ovulation"] {
+  background: rgba(212, 184, 150, 0.15);
+  color: var(--c-calendar-cycle-ovulation);
+}
+
+.calendar-menstrual-legend span[data-type="luteal"],
+.calendar-menstrual-title-tag[data-type="luteal"] {
+  background: color-mix(in srgb, var(--c-calendar-cycle-luteal) 12%, transparent);
+  color: var(--c-calendar-cycle-luteal);
+}
+
+.calendar-unified-cycle-dot[data-type="period"],
+.calendar-grid-day-phase-dot[data-type="period"] {
+  background: var(--c-calendar-cycle-period);
+}
+
+.calendar-unified-cycle-dot[data-type="predicted_period"],
+.calendar-grid-day-phase-dot[data-type="predicted_period"] {
+  background: var(--c-calendar-cycle-predicted);
+}
+
+.calendar-unified-cycle-dot[data-type="follicular"],
+.calendar-grid-day-phase-dot[data-type="follicular"] {
+  background: var(--c-calendar-cycle-follicular);
+}
+
+.calendar-unified-cycle-dot[data-type="ovulation"],
+.calendar-grid-day-phase-dot[data-type="ovulation"] {
+  background: var(--c-calendar-cycle-ovulation);
+}
+
+.calendar-unified-cycle-dot[data-type="luteal"],
+.calendar-grid-day-phase-dot[data-type="luteal"] {
+  background: var(--c-calendar-cycle-luteal);
+}
+
+.calendar-menstrual-pill[data-active="true"] {
+  background: rgba(213, 213, 211, 0.28);
+  color: #797877;
+}
+
+.calendar-menstrual-pill[data-active="true"] .calendar-menstrual-pill-switch {
+  background: var(--c-calendar-accent);
+}
+
+.calendar-hero {
+  border-radius: 20px;
+}
+
+.calendar-hero-kicker {
+  background: linear-gradient(135deg, rgba(216, 216, 215, 0.6), rgba(255, 255, 255, 0.9));
+  color: #797877;
+  box-shadow: 0 2px 6px rgba(213, 213, 211, 0.25);
+}
+
+.calendar-hero-stat {
+  color: #4c4b4a;
+}
+
+.calendar-hero-stat strong {
+  background: linear-gradient(135deg, #D5D5D4, #A9A9A8);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.calendar-menstrual-kicker {
+  background: linear-gradient(135deg, rgba(251, 169, 192, 0.5), rgba(255, 255, 255, 0.9));
+  color: #c07a85;
+  box-shadow: 0 2px 6px rgba(240, 147, 156, 0.2);
+}
+
+.calendar-setting-card {
+  border-radius: 16px;
+}
+
+.calendar-fab-primary {
+  background: linear-gradient(135deg, rgba(216, 216, 215, 0.6), rgba(255, 255, 255, 0.85));
+  backdrop-filter: blur(8px);
+  color: #797877;
+  border: 1px solid rgba(213, 213, 211, 0.4);
+}
+
+.calendar-edit-modal {
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.calendar-theme-options {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+
+.calendar-theme-option {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.calendar-theme-swatch {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.calendar-theme-option > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-unified-cell[data-cycle] .calendar-unified-date {
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  font-weight: 400;
+}
+
+.calendar-unified-cell[data-cycle="period"] .calendar-unified-date {
+  color: var(--c-calendar-cycle-period);
+}
+
+.calendar-unified-cell[data-cycle="predicted_period"] .calendar-unified-date {
+  color: var(--c-calendar-cycle-predicted);
+}
+
+.calendar-unified-cell[data-cycle="follicular"] .calendar-unified-date {
+  color: var(--c-calendar-cycle-follicular);
+}
+
+.calendar-unified-cell[data-cycle="ovulation"] .calendar-unified-date {
+  color: var(--c-calendar-cycle-ovulation);
+}
+
+.calendar-unified-cell[data-cycle="luteal"] .calendar-unified-date {
+  color: var(--c-calendar-cycle-luteal);
+}
+
+.calendar-unified-cell[data-cycle] .calendar-unified-cycle-dot {
+  display: none;
+}
+
+/* White, outlined default surface inspired by Wallet cards. */
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-setting-card,
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-menstrual-card,
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-week-card,
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-grid-card,
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-day-list-item {
+  background: #FFFFFF;
+  border: 1px solid #E8E8E8;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-row[data-current="true"] {
+  background: #FFFFFF;
+  border: 1px solid #E8E8E8;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell .calendar-unified-date {
+  color: #B3B3BE;
+  font-weight: 400;
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-in-week="true"] .calendar-unified-date {
+  color: #85858D;
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-selected="true"] .calendar-unified-date {
+  color: #6F7078;
+  font-weight: 400;
+  box-shadow: 0 0 0 1px #D7D8D8;
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-has-items="true"] .calendar-unified-date {
+  background: transparent;
+  color: #85858D;
+  box-shadow: none;
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-cycle] .calendar-unified-date {
+  font-weight: 400;
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-day-list-item[data-current="true"] {
+  background: #FFFFFF;
+  border-color: #D7D8D8;
+  box-shadow: none;
 }
 
 /* ── Floating Action Buttons (FAB) - Big Glowing ── */

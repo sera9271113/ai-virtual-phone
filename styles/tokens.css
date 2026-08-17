@@ -115,60 +115,56 @@
   --c-music-liked: #ff5468;
   /* 已点赞红心 */
 
-  /* ── 日历色 (Ocean Foam Aesthetics - Default Base) ── */
-  --c-calendar-bg-top: #E8F4F8;
-  /* Seafoam White */
-  --c-calendar-bg-mid: #E8F4F8;
-  /* Flat */
-  --c-calendar-bg-bottom: #E8F4F8;
-  /* Flat */
-  --c-calendar-orb-1: #7BC6EC;
-  /* Glacier Blue */
-  --c-calendar-orb-2: #FFCDD2;
-  /* Coral Glow */
-  --c-calendar-text: #4A6B7C;
-  /* Darker blue-grey for readability */
-  --c-calendar-sub: #8AA8B8;
-  /* Lighter blue-grey */
-  --c-calendar-accent: #7BC6EC;
-  /* Deepened Glacier Blue */
-  --c-calendar-accent-dim: rgba(123, 198, 236, 0.25);
-  --c-calendar-weekend: #FFCDD2;
-  /* Coral Glow */
-  --c-calendar-action: #5B8FB9;
+  /* ── 日历色 (Warm Gray White - Default Base) ── */
+  --c-calendar-bg-top: #ffffff;
+  --c-calendar-bg-mid: #ffffff;
+  --c-calendar-bg-bottom: #F7F7F7;
+  --c-calendar-orb-1: rgba(230, 230, 230, 0.18);
+  --c-calendar-orb-2: rgba(245, 205, 214, 0.16);
+  --c-calendar-text: #6F7078;
+  --c-calendar-sub: #B3B3BE;
+  --c-calendar-accent: #D7D8D8;
+  --c-calendar-accent-dim: rgba(215, 216, 216, 0.28);
+  --c-calendar-weekend: #B3B3BE;
+  --c-calendar-action: #D7D8D8;
   /* 弹窗按钮/图标强调色 */
-  --c-calendar-modal-pink: rgba(255, 255, 255, 0.3);
-  --c-calendar-modal-blue: rgba(255, 255, 255, 0.3);
+  --c-calendar-modal-pink: rgba(247, 247, 247, 0.75);
+  --c-calendar-modal-blue: rgba(248, 248, 248, 0.75);
 
   /* ── 阴影与毛玻璃辅助层 (Glass Layers - 全主题通用) ── */
   --c-calendar-panel: rgba(255, 255, 255, 0.7);
-  --c-calendar-border: rgba(179, 229, 252, 0.4);
-  --c-calendar-glass-1: rgba(255, 255, 255, 0.3);
-  --c-calendar-glass-3: rgba(255, 255, 255, 0.3);
-  --c-calendar-glass-4: rgba(255, 255, 255, 0.3);
-  --c-calendar-glass-5: rgba(255, 255, 255, 0.5);
-  --c-calendar-glass-55: rgba(255, 255, 255, 0.55);
-  --c-calendar-glass-6: rgba(255, 255, 255, 0.6);
-  --c-calendar-glass-7: rgba(255, 255, 255, 0.7);
-  --c-calendar-glass-8: rgba(255, 255, 255, 0.8);
-  --c-calendar-glass-85: rgba(255, 255, 255, 0.85);
-  --c-calendar-glass-9: rgba(255, 255, 255, 0.9);
-  --c-calendar-glass-full: #fff;
-  --c-calendar-shadow-2: rgba(0, 0, 0, 0.02);
-  --c-calendar-shadow-3: rgba(0, 0, 0, 0.03);
-  --c-calendar-shadow-4: rgba(0, 0, 0, 0.04);
-  --c-calendar-shadow-6: rgba(0, 0, 0, 0.06);
-  --c-calendar-shadow-10: rgba(0, 0, 0, 0.1);
-  --c-calendar-shadow-15: rgba(0, 0, 0, 0.15);
+  --c-calendar-border: #E8E8E8;
+  --c-calendar-glass-1: #FFFFFF;
+  --c-calendar-glass-3: rgba(255, 255, 255, 0.55);
+  --c-calendar-glass-4: rgba(255, 255, 255, 0.6);
+  --c-calendar-glass-5: rgba(255, 255, 255, 0.65);
+  --c-calendar-glass-55: rgba(255, 255, 255, 0.7);
+  --c-calendar-glass-6: rgba(255, 255, 255, 0.75);
+  --c-calendar-glass-7: rgba(255, 255, 255, 0.8);
+  --c-calendar-glass-8: rgba(255, 255, 255, 0.85);
+  --c-calendar-glass-85: rgba(255, 255, 255, 0.92);
+  --c-calendar-glass-9: rgba(255, 255, 255, 0.96);
+  --c-calendar-glass-full: #ffffff;
+  --c-calendar-shadow-2: rgba(127, 127, 126, 0.05);
+  --c-calendar-shadow-3: rgba(127, 127, 126, 0.07);
+  --c-calendar-shadow-4: rgba(127, 127, 126, 0.09);
+  --c-calendar-shadow-6: rgba(127, 127, 126, 0.11);
+  --c-calendar-shadow-10: rgba(127, 127, 126, 0.14);
+  --c-calendar-shadow-15: rgba(127, 127, 126, 0.18);
   --c-calendar-overlay: rgba(0, 0, 0, 0.18);
-  --c-calendar-event-blue: #3b82f6;
-  --c-calendar-event-green: #10b981;
-  --c-calendar-event-amber: #f59e0b;
-  --c-calendar-event-rose: #f43f5e;
-  --c-calendar-event-violet: #8b5cf6;
-  --c-calendar-event-teal: #14b8a6;
-  --c-calendar-event-slate: #64748b;
-  --c-calendar-event-purple: #a855f7;
+  --c-calendar-event-blue: #B2B1B0;
+  --c-calendar-event-green: #B2B1B0;
+  --c-calendar-event-amber: #B2B1B0;
+  --c-calendar-event-rose: #B2B1B0;
+  --c-calendar-event-violet: #B2B1B0;
+  --c-calendar-event-teal: #B2B1B0;
+  --c-calendar-event-slate: #B2B1B0;
+  --c-calendar-event-purple: #B2B1B0;
+  --c-calendar-cycle-period: #F08E9D;
+  --c-calendar-cycle-predicted: #E9A5A9;
+  --c-calendar-cycle-follicular: #F5CDD6;
+  --c-calendar-cycle-ovulation: #B3B3BE;
+  --c-calendar-cycle-luteal: #C5A9A1;
 
   /* ── 桌面文字 ── */
   --c-home-label: #4A4A4A;
