@@ -14,6 +14,8 @@ SillyTavern/
 *.crdownload
 *.tsbuildinfo
 tsconfig.tsbuildinfo
+作者版/
+ai-virtual-phone-main.zip
 .idea/
 .vscode/
 .wx-media/
