@@ -231,22 +231,21 @@ const MEMORY_DOMAIN_STYLES = `
 .mb-section-action.is-danger:active { color: #dc2626; }
 .mb-section-action:active { color: #334155; opacity: 0.7; }
 
-.mb-feed-list { display: flex; flex-direction: column; gap: 28px; touch-action: pan-y; }
-.mb-feed-item { display: flex; align-items: flex-start; gap: 12px; max-width: 100%; }
+.mb-feed-list { display: flex; flex-direction: column; gap: 28px; width: 100%; min-width: 0; max-width: 100%; touch-action: pan-y; }
+.mb-feed-item { display: flex; align-items: flex-start; gap: 12px; width: 100%; min-width: 0; max-width: 100%; }
 .mb-feed-icon-wrap { flex-shrink: 0; width: 20px; display: flex; justify-content: flex-start; padding-top: 3px; }
 .mb-feed-content-wrap { flex-grow: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; max-width: 100%; overflow-x: hidden; cursor: pointer; }
 .mb-feed-text { font-size: 13px; color: #1e293b; line-height: 1.6; font-weight: 500; white-space: normal; word-wrap: break-word; }
 .mb-feed-meta-rows { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .mb-feed-meta-row {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
     gap: 6px;
-    overflow-x: auto;
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
 }
-.mb-feed-meta-row::-webkit-scrollbar { display: none; }
 .mb-meta-tag { background: #FBFBFB; color: #64748b; font-size: 9px; font-weight: 600; padding: 4px 6px; border-radius: 4px; letter-spacing: 0.2px; white-space: nowrap; flex-shrink: 0; }
 .mb-meta-tag.status-active { background: rgba(34, 197, 94, 0.15); color: #15803d; }
 .mb-meta-tag.status-sleeping { background: #4b5563; color: #ffffff; }
@@ -1636,6 +1635,10 @@ export function MemoryBankPage({ view, selectedCharId, onSelectChar, onNotice }:
                         flex: 1,
                         minHeight: 0,
                         overflowY: "auto",
+                        overflowX: "hidden",
+                        touchAction: "pan-y",
+                        width: "100%",
+                        maxWidth: "100%",
                         WebkitOverflowScrolling: "touch",
                     }}
                 >

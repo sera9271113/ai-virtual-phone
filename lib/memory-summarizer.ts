@@ -234,7 +234,9 @@ export async function runSummarizationPipeline(
         await deleteMemoryEntries(excess.map(e => e.id));
     }
 
-    incrementCoreMemoryCounter(characterId);
+    for (let index = 0; index < savedCount; index++) {
+        incrementCoreMemoryCounter(characterId);
+    }
     await maybeRunCoreMemoryPipeline(characterId, characterName);
 
     console.log(`[MemorySummarizer] Summarized ${allEntries.length} entries → ${savedCount} long-term memories across domains`);

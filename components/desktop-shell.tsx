@@ -34,6 +34,7 @@ import { GameHubApp } from "@/components/game/game-hub-app";
 import InterviewMagazineApp from "@/components/interview/interview-magazine-app";
 import { CoCreateApp } from "@/components/cocreate/cocreate-app";
 import { AppMarketApp } from "@/components/app-market/app-market-app";
+import { ResourceHubApp } from "@/components/resource-hub/resource-hub-app";
 import { CustomAppRunner } from "@/components/app-market/custom-app-runner";
 import { hydrateKvDb, kvGet, kvSet, kvRemove, kvKeysWithPrefix } from "@/lib/kv-db";
 import { deleteDatabase } from "@/lib/data-management/idb";
@@ -3197,6 +3198,10 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
           initialPage={resourcesInitialPage}
         />
       );
+    }
+
+    if (activeApp === "resource_hub") {
+      return <ResourceHubApp onClose={() => setActiveApp(null)} onNotice={setNotice} />;
     }
 
     if (activeApp === "music") {

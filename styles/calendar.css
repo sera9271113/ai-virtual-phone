@@ -867,12 +867,7 @@
 }
 
 .calendar-unified-cell[data-today="true"] .calendar-unified-date::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 2px solid color-mix(in srgb, var(--c-calendar-accent) 62%, transparent);
-  pointer-events: none;
+  content: none;
 }
 
 .calendar-unified-cell[data-cycle="period"] .calendar-unified-date {
@@ -1010,21 +1005,21 @@
 .calendar-grid-day-head strong {
   font-size: calc(10px*var(--app-text-scale,1));
   font-weight: 300;
-  color: var(--c-calendar-sub);
+  color: #D0CACC;
 }
 
 .calendar-grid-day-head span {
   font-size: calc(11px*var(--app-text-scale,1));
   font-weight: 400;
-  color: var(--c-calendar-text);
+  color: #C5BEC0;
 }
 
 .calendar-grid-day-head[data-selected="true"] strong {
-  color: var(--c-calendar-accent);
+  color: #91898B;
 }
 
 .calendar-grid-day-head[data-selected="true"] span {
-  color: var(--c-calendar-accent);
+  color: #676062;
 }
 
 .calendar-grid-day-phase-dot {
@@ -1114,6 +1109,10 @@
   width: 4px;
   border-radius: 0;
   background: var(--event-color, var(--c-calendar-accent));
+}
+
+.calendar-day-list-item:not([data-current="true"]) .calendar-day-list-dot {
+  background: #E7E1E3;
 }
 
 .calendar-day-list-time {
@@ -1439,41 +1438,53 @@
 
 /* White, outlined default surface inspired by Wallet cards. */
 .calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-setting-card,
-.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-menstrual-card,
 .calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-week-card,
-.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-grid-card,
-.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-day-list-item {
-  background: #FFFFFF;
-  border: 1px solid #E8E8E8;
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-grid-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.99), rgba(255, 252, 253, 0.9));
+  border: 1px solid #F7EFF2;
   border-radius: 8px;
+  box-shadow: none;
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-menstrual-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.99), rgba(255, 250, 252, 0.9));
+  border: 1px solid #F6ECF0;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-day-list-item {
+  background: transparent;
+  border: none;
+  border-radius: 0;
   box-shadow: none;
 }
 
 .calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-row[data-current="true"] {
-  background: #FFFFFF;
-  border: 1px solid #E8E8E8;
+  background: rgba(255, 251, 252, 0.84);
+  border: 1px solid #F6EAF0;
   border-radius: 8px;
-  box-shadow: none;
+  box-shadow: 0 4px 14px rgba(207, 169, 179, 0.04);
 }
 
 .calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell .calendar-unified-date {
-  color: #B3B3BE;
+  color: #C5BEC0;
   font-weight: 400;
 }
 
 .calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-in-week="true"] .calendar-unified-date {
-  color: #85858D;
+  color: #C5BEC0;
 }
 
 .calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-selected="true"] .calendar-unified-date {
-  color: #6F7078;
+  color: #676062;
   font-weight: 400;
-  box-shadow: 0 0 0 1px #D7D8D8;
+  box-shadow: none;
 }
 
 .calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-has-items="true"] .calendar-unified-date {
   background: transparent;
-  color: #85858D;
+  color: #6F7078;
   box-shadow: none;
 }
 
@@ -1481,10 +1492,54 @@
   font-weight: 400;
 }
 
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-cycle="period"] .calendar-unified-date {
+  color: var(--c-calendar-cycle-period);
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-cycle="predicted_period"] .calendar-unified-date {
+  color: var(--c-calendar-cycle-predicted);
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-cycle="follicular"] .calendar-unified-date {
+  color: var(--c-calendar-cycle-follicular);
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-cycle="ovulation"] .calendar-unified-date {
+  color: var(--c-calendar-cycle-ovulation);
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-cycle="luteal"] .calendar-unified-date {
+  color: var(--c-calendar-cycle-luteal);
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell:not([data-selected="true"])[data-has-items="true"] .calendar-unified-date {
+  color: #C5BEC0;
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-unified-cell[data-selected="true"] .calendar-unified-date {
+  color: #676062;
+}
+
 .calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-day-list-item[data-current="true"] {
-  background: #FFFFFF;
-  border-color: #D7D8D8;
-  box-shadow: none;
+  background: linear-gradient(100deg, rgba(255, 249, 251, 0.92), rgba(255, 253, 254, 0.99));
+  border: 1px solid #F6E8ED;
+  border-radius: 8px;
+  box-shadow: 0 5px 16px rgba(190, 143, 156, 0.04);
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-day-list-item:not([data-current="true"]) .calendar-day-list-dot {
+  background: #F0DDE3;
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-day-list-item[data-current="true"] .calendar-day-list-current {
+  background: #E8CBD3;
+  color: #FFFFFF;
+}
+
+.calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-fab {
+  color: #D6AEB9;
+  border-color: #F3E3E7;
+  background: rgba(255, 252, 253, 0.97);
 }
 
 /* ── Floating Action Buttons (FAB) - Big Glowing ── */
@@ -2020,7 +2075,7 @@
   padding: 11px 12px;
   border-radius: 14px;
   border: 1px solid var(--c-calendar-glass-5);
-  background: var(--c-calendar-glass-4);
+  background: rgba(255, 255, 255, 0.9);
   color: var(--c-calendar-text);
   cursor: pointer;
   text-align: left;
@@ -2052,7 +2107,7 @@
   justify-content: center;
   border-radius: 999px;
   border: 1px solid var(--c-calendar-glass-5);
-  background: var(--c-calendar-glass-3);
+  background: rgba(255, 255, 255, 0.88);
   color: var(--c-danger);
   cursor: pointer;
   flex-shrink: 0;

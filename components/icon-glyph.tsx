@@ -34,6 +34,7 @@ import {
   mdiAccountGroup,
   mdiPalette,
   mdiDatabase,
+  mdiStorefrontOutline,
   mdiAccount,
   mdiHome,
 } from "@mdi/js";
@@ -67,6 +68,7 @@ const MDI_PATHS: Record<IconId, string> = {
   group_chat: mdiAccountGroup,
   theme: mdiPalette,
   resources: mdiDatabase,
+  resource_hub: mdiStorefrontOutline,
   characters: mdiAccount,
   dwelling: mdiHome,
 };
