@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Armchair, ChevronLeft, LoaderCircle, RefreshCw, Trash2, Wand2, X } from "lucide-react";
+import { Armchair, ChevronLeft, LoaderCircle, RefreshCw, Trash2, UserRound, Wand2, X } from "lucide-react";
 import type { Character } from "@/lib/character-types";
 import { loadCharacters } from "@/lib/character-storage";
 import type { DwellingLayout, DwellingRoom, DwellingFurniture, DwellingFurnitureItem } from "@/lib/dwelling-storage";
@@ -65,6 +65,7 @@ function itemKey(roomId: string, itemId: string) { return `${roomId}_${itemId}`;
 
 /** mediaRef → object URL（会话级缓存，图不多，不主动 revoke） */
 const roomImageUrls = new Map<string, string>();
+const ACTIVE_CHARACTER_STORAGE_KEY = "dwelling.activeCharacterId";
 
 export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
     const [characters, setCharacters] = useState<Character[]>([]);
@@ -74,7 +75,7 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
     const rerender = () => forceUpdate(n => n + 1);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showRefreshConfirm, setShowRefreshConfirm] = useState(false);
-    const [roomMenuOpen, setRoomMenuOpen] = useState(false);
+    const [characterMenuOpen, setCharacterMenuOpen] = useState(false);
     const [itemDetail, setItemDetail] = useState<ItemDetail | null>(null);
     const [imageEnabled, setImageEnabled] = useState(true);
     const [imageConfigured, setImageConfigured] = useState(false);
@@ -109,7 +110,11 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
     useEffect(() => {
         const chars = loadCharacters();
         setCharacters(chars);
-        if (chars.length === 1) setActiveCharId(chars[0].id);
+        let savedCharId: string | null = null;
+        try {
+            savedCharId = localStorage.getItem(ACTIVE_CHARACTER_STORAGE_KEY);
+        } catch { }
+        setActiveCharId(chars.find(character => character.id === savedCharId)?.id ?? chars[0]?.id ?? null);
         // Pre-load all characters' cached layouts + item HTML so ✓ shows immediately
         (async () => {
             for (const c of chars) {
@@ -125,6 +130,13 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
             rerender();
         })();
     }, []);
+
+    useEffect(() => {
+        if (!activeCharId) return;
+        try {
+            localStorage.setItem(ACTIVE_CHARACTER_STORAGE_KEY, activeCharId);
+        } catch { }
+    }, [activeCharId]);
 
     useEffect(() => {
         if (!activeCharId) return;
@@ -373,42 +385,35 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
     const activeRoom = cs?.layout?.rooms[activeRoomIdx] ?? null;
 
     return (
-        <div className="dwelling-app" data-haspicker={characters.length > 1 ? "true" : undefined}>
+        <div className="dwelling-app" data-haspopup={characters.length > 1 ? "true" : undefined}>
             <div className="dwelling-header">
                 <button className="dw-back" onClick={onClose}><ChevronLeft size={18} /></button>
                 <h1>Dwelling</h1>
                 <button
                     className="dw-room-menu-trigger"
-                    onClick={() => setRoomMenuOpen(true)}
-                    disabled={!cs?.layout}
-                    aria-label="打开房间列表"
-                    aria-expanded={roomMenuOpen}
-                    title="房间列表"
+                    onClick={() => setCharacterMenuOpen(true)}
+                    disabled={characters.length === 0}
+                    aria-label="打开角色列表"
+                    aria-expanded={characterMenuOpen}
+                    title="角色列表"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                        <path d="M21 12l-9 -9l-9 9h2v7a2 2 0 0 0 2 2h4.7" />
-                        <path d="M9 21v-6a2 2 0 0 1 2 -2h2" />
-                        <path d="M15 18a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
-                        <path d="M20.2 20.2l1.8 1.8" />
-                    </svg>
+                    <UserRound size={19} aria-hidden="true" />
                 </button>
             </div>
 
-            {characters.length > 1 && (
-                <div className="dwelling-char-picker">
-                    {characters.map(c => {
-                        const s = getCharState(c.id);
-                        return (
-                            <button key={c.id} className="dwelling-char-chip"
-                                data-active={activeCharId === c.id ? "true" : undefined}
-                                onClick={() => { setActiveCharId(c.id); setActiveRoomIdx(0); setItemDetail(null); setRoomMenuOpen(false); }}>
-                                {s.layout && <span className="dw-char-status-dot" aria-hidden="true" />}
-                                <span className="dw-chip-zh">{c.name}</span>
-                                {s.isGenerating && s.layout && <LoaderCircle className="dw-char-loading" size={14} aria-label="正在刷新物品" />}
-                            </button>
-                        );
-                    })}
+            {cs?.layout && (
+                <div className="dwelling-char-picker" aria-label="房间列表">
+                    {cs.layout.rooms.map((room, idx) => (
+                        <button key={room.id} className="dwelling-char-chip"
+                            data-active={activeRoomIdx === idx ? "true" : undefined}
+                            onClick={() => { setActiveRoomIdx(idx); setItemDetail(null); }}>
+                            <span className="dw-chip-zh">{room.name}</span>
+                            <span className="dw-room-chip-furniture" aria-label={`${room.furniture.length} 件家具`}>
+                                <span>{room.furniture.length}</span>
+                                <Armchair size={14} strokeWidth={1.8} aria-hidden="true" />
+                            </span>
+                        </button>
+                    ))}
                 </div>
             )}
 
@@ -442,46 +447,51 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
                 </div>
             )}
 
-            {cs?.layout && roomMenuOpen && (
+            {characterMenuOpen && characters.length > 0 && (
                 <div className="dw-room-drawer-layer">
-                    <button className="dw-room-drawer-shade" onClick={() => setRoomMenuOpen(false)} aria-label="关闭房间列表" />
-                    <aside className="dw-room-drawer" aria-label="房间列表">
+                    <button className="dw-room-drawer-shade" onClick={() => setCharacterMenuOpen(false)} aria-label="关闭角色列表" />
+                    <aside className="dw-room-drawer" aria-label="角色列表">
                         <div className="dw-room-drawer-header">
                             <div>
-                                <span className="dw-room-drawer-kicker">ROOMS</span>
-                                <strong>房间</strong>
+                                <span className="dw-room-drawer-kicker">CHARACTERS</span>
+                                <strong>角色</strong>
                             </div>
-                            <button className="dw-room-drawer-close" onClick={() => setRoomMenuOpen(false)} aria-label="关闭房间列表" title="关闭">
+                            <button className="dw-room-drawer-close" onClick={() => setCharacterMenuOpen(false)} aria-label="关闭角色列表" title="关闭">
                                 <X size={16} />
                             </button>
                         </div>
                         <div className="dw-room-drawer-list">
-                            {cs.layout.rooms.map((room, idx) => (
-                                <button key={room.id} className="dw-room-drawer-item"
-                                    data-active={activeRoomIdx === idx ? "true" : undefined}
-                                    onClick={() => { setActiveRoomIdx(idx); setItemDetail(null); setRoomMenuOpen(false); }}>
+                            {characters.map((character, idx) => {
+                                const characterState = getCharState(character.id);
+                                return <button key={character.id} className="dw-room-drawer-item"
+                                    data-active={activeCharId === character.id ? "true" : undefined}
+                                    onClick={() => { setActiveCharId(character.id); setActiveRoomIdx(0); setItemDetail(null); setCharacterMenuOpen(false); }}>
                                     <span className="dw-room-drawer-index">{String(idx + 1).padStart(2, "0")}</span>
                                     <span className="dw-room-drawer-copy">
-                                        <span className="dw-room-drawer-name">{room.name}</span>
-                                        {room.en && <span className="dw-room-drawer-en">{room.en}</span>}
+                                        <span className="dw-room-drawer-name">{character.name}</span>
+                                        <span className="dw-room-drawer-en">{characterState.layout ? `${characterState.layout.rooms.length} ROOMS` : "NO ROOMS"}</span>
                                     </span>
-                                    <span className="dw-room-drawer-furniture" aria-label={`${room.furniture.length} 件家具`}>
-                                        <span>{room.furniture.length}</span>
-                                        <Armchair size={17} strokeWidth={1.8} aria-hidden="true" />
+                                    <span className="dw-character-drawer-end">
+                                        {characterState.isGenerating && <LoaderCircle className="dw-char-loading" size={15} aria-label="正在生成房间" />}
+                                        <span className="dw-character-drawer-avatar" aria-hidden="true">
+                                            {character.avatar
+                                                ? <img src={character.avatar} alt="" draggable={false} />
+                                                : <span>{character.name.slice(0, 1)}</span>}
+                                        </span>
                                     </span>
-                                </button>
-                            ))}
+                                </button>;
+                            })}
                         </div>
                         <div className="dw-room-drawer-actions">
-                            <button className="dw-tab-action" onClick={() => { setRoomMenuOpen(false); setShowRefreshConfirm(true); }} disabled={cs.isGenerating} title="重新生成">
+                            <button className="dw-tab-action" onClick={() => { setCharacterMenuOpen(false); setShowRefreshConfirm(true); }} disabled={!cs?.layout || cs.isGenerating} title="重新生成" aria-label="重新生成">
                                 <RefreshCw size={13} />
                             </button>
-                            <button className="dw-tab-action dw-tab-action-danger" onClick={() => { setRoomMenuOpen(false); setShowDeleteConfirm(true); }} disabled={cs.isGenerating} title="删除布局">
+                            <button className="dw-tab-action dw-tab-action-danger" onClick={() => { setCharacterMenuOpen(false); setShowDeleteConfirm(true); }} disabled={!cs?.layout || cs.isGenerating} title="删除布局" aria-label="删除布局">
                                 <Trash2 size={13} />
                             </button>
                             <button className="dw-tab-action dw-tab-action-image" data-on={imageEnabled && imageConfigured ? "true" : undefined}
                                 onClick={() => { const next = !imageEnabled; setImageEnabled(next); saveDwellingImageEnabled(next); }}
-                                disabled={!imageConfigured || cs.isGenerating}
+                                disabled={!cs?.layout || !imageConfigured || cs.isGenerating}
                                 title={!imageConfigured ? "请先在设置中配置图像生成" : imageEnabled ? "禁止手动生图" : "允许手动生图"}
                                 aria-label={imageEnabled ? "禁止手动生图" : "允许手动生图"}
                                 aria-pressed={imageEnabled && imageConfigured}>

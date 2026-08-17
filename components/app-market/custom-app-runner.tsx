@@ -85,6 +85,7 @@ type CustomAppRunnerProps = {
   app: InstalledCustomApp;
   onClose: () => void;
   onNotice?: (message: string) => void;
+  managed?: boolean;
   launchContext?: Record<string, unknown> | null;
   embedded?: boolean;
   backgroundEvent?: {
@@ -692,6 +693,7 @@ export function CustomAppRunner({
   app,
   onClose,
   onNotice,
+  managed = true,
   launchContext,
   embedded = false,
   backgroundEvent,
@@ -1725,10 +1727,14 @@ export function CustomAppRunner({
     <div className={`custom-app-runner${embedded ? " custom-app-runner-embedded" : ""}`}>
       {!embedded ? (
         <div className="custom-app-runner-capsule">
-          <button type="button" className="cap-btn" onClick={() => { setMenuActionError(""); setMenuOpen(true); }} aria-label="应用菜单">
-            <MoreHorizontal size={15} strokeWidth={2.4} />
-          </button>
-          <span className="cap-divider" />
+          {managed ? (
+            <>
+              <button type="button" className="cap-btn" onClick={() => { setMenuActionError(""); setMenuOpen(true); }} aria-label="应用菜单">
+                <MoreHorizontal size={15} strokeWidth={2.4} />
+              </button>
+              <span className="cap-divider" />
+            </>
+          ) : null}
           <button type="button" className="cap-btn" onClick={onClose} aria-label={closeLabel}>
             <Circle size={13} strokeWidth={2.4} />
           </button>
@@ -1743,7 +1749,7 @@ export function CustomAppRunner({
         srcDoc={bridgeReady ? srcDoc : EMPTY_CUSTOM_APP_SRC_DOC}
       />
 
-      {menuOpen ? (
+      {managed && menuOpen ? (
         <div className="app-market-overlay app-market-drawer-overlay" role="presentation" onClick={() => setMenuOpen(false)}>
           <div className="app-market-sheet app-market-detail-sheet" role="dialog" aria-modal="true" aria-label="应用详情" onClick={event => event.stopPropagation()}>
             <div className="app-market-sheet-head">
@@ -1808,7 +1814,7 @@ export function CustomAppRunner({
         </div>
       ) : null}
 
-      {confirmDelete ? (
+      {managed && confirmDelete ? (
         <div className="app-market-overlay" role="presentation" onClick={() => setConfirmDelete(false)}>
           <div className="app-market-sheet" role="dialog" aria-modal="true" aria-label="卸载 APP" onClick={event => event.stopPropagation()}>
             <div className="app-market-sheet-head">

@@ -16,6 +16,7 @@ import { PageShell } from "@/components/ui/page-shell";
 import { CHAT_APP_CSS_EXAMPLE } from "@/lib/css-examples";
 import { Toggle } from "@/components/ui/form";
 import { StickerManager } from "./sticker-manager";
+import { ChatPluginManager } from "./chat-plugin-manager";
 import { loadMomentsConfig, saveMomentsConfig, DEFAULT_MOMENTS_CONFIG, type MomentsInteractionConfig, getAllPosts } from "@/lib/moments-storage";
 import { loadChatContacts } from "@/lib/chat-storage";
 import { loadCharacters } from "@/lib/character-storage";
@@ -79,6 +80,18 @@ function MoodSmileIcon() {
             <path d="M9 10l.01 0" />
             <path d="M15 10l.01 0" />
             <path d="M9.5 15a3.5 3.5 0 0 0 5 0" />
+        </svg>
+    );
+}
+
+function JsFileIcon() {
+    return (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+            <path d="M3 15h3v4.5a1.5 1.5 0 0 1 -3 0" />
+            <path d="M9 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1v-1a1 1 0 0 1 1 -1h1.25a.75 .75 0 0 1 .75 .75" />
+            <path d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2h-1" />
         </svg>
     );
 }
@@ -149,6 +162,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps =
     const [showFollowUpEditor, setShowFollowUpEditor] = useState(false);
     const [showApiLog, setShowApiLog] = useState(false);
     const [showStickerManager, setShowStickerManager] = useState(false);
+    const [showPluginManager, setShowPluginManager] = useState(false);
     const [showCSSEditor, setShowCSSEditor] = useState(false);
     const [showMomentsSettings, setShowMomentsSettings] = useState(false);
     const [identity, setIdentity] = useState<UserIdentity | null>(null);
@@ -188,6 +202,9 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps =
     }
     if (showStickerManager) {
         return <StickerManager onBack={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: false })); setShowStickerManager(false); }} />;
+    }
+    if (showPluginManager) {
+        return <ChatPluginManager onBack={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: false })); setShowPluginManager(false); }} />;
     }
     if (showMomentsSettings) {
         return <InlineMomentsSettings onBack={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: false })); setShowMomentsSettings(false); }} />;
@@ -281,6 +298,12 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps =
                                 <CssFileIcon />
                             </div>
                             <span className="ts-12 font-semibold text-[var(--c-text-title)]">CSS</span>
+                        </button>
+                        <button className="flex flex-col items-center gap-1 flex-1" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowPluginManager(true); }}>
+                            <div className="w-[36px] h-[36px] flex items-center justify-center text-[#777]">
+                                <JsFileIcon />
+                            </div>
+                            <span className="ts-12 font-semibold text-[var(--c-text-title)]">Plugins</span>
                         </button>
                     </div>
 

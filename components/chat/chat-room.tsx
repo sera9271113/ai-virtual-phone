@@ -67,6 +67,9 @@ import { scrollElementWithinContainer } from "@/lib/dom-scroll";
 import { ChatFallbackAvatar } from "./chat-fallback-avatar";
 import { abortableDelay, throwIfAborted } from "@/lib/abort-utils";
 import { GROUP_SELF_KEY, canGroupAdminAct, applyGroupAdminAction, buildGroupAdminNoticeText, getGroupMemberDisplayName, getGroupMuteRemainingMs, getGroupTitleColor, getGroupBadgeText, isGroupMuted, isGroupMemberKey, formatMuteRemainingLabel, resolveGroupMemberKeyByName, type GroupAdminAction } from "@/lib/group-admin";
+import { emitChatPluginEvent, getChatPluginHookBus, runChatPluginTransform } from "@/lib/chat-plugin-hooks";
+import { getChatPluginRuntime } from "@/lib/chat-plugin-runtime";
+import { ChatPluginSlot } from "@/components/chat/chat-plugin-slot";
 
 // ── Call system message detection ──────────────────────────
 // Call messages are stored with user/assistant role for correct prompt alternation,
@@ -851,6 +854,7 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
                                     ))}
                                 </div>
                             )}
+                            <ChatPluginSlot name="chat.inputToolbar" slotProps={{ isGroup }} className="chat-plugin-input-toolbar" />
                         </>
                     )}
                 </div>
@@ -1103,6 +1107,9 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
     useEffect(() => () => { mountedRef.current = false; }, []);
     useEffect(() => { visibleMessagesRef.current = messages; }, [messages]);
     useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
+    useEffect(() => {
+        emitChatPluginEvent("session.opened", { sessionId: session.id, isGroup: !!session.isGroup });
+    }, [session.id, session.isGroup]);
     useChatBottomReserve(
         wrapperRef,
         scrollRef,
@@ -3531,9 +3538,6 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
         // Cancel any pending follow-up for this session
         cancelFollowUp(session.id);
 
-        const currentText = trimmed;
-
-        // If quoting a message, send as quote type
         const isQuoting = !!quotingMessage;
         const quoteData = quotingMessage ? {
             quoteMessageId: quotingMessage.id,
@@ -3542,16 +3546,33 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
         } : undefined;
         setQuotingMessage(null);
 
-        const newMsg = pushChatMessage({
-            sessionId: session.id,
-            role: "user",
-            content: currentText,
-            mediaType: isQuoting ? "quote" : undefined,
-            mediaData: isQuoting ? quoteData : undefined,
-        });
+        const commitSendText = (currentText: string) => {
+            const newMsg = pushChatMessage({
+                sessionId: session.id,
+                role: "user",
+                content: currentText,
+                mediaType: isQuoting ? "quote" : undefined,
+                mediaData: isQuoting ? quoteData : undefined,
+            });
 
-        setMessages(prev => [...prev, newMsg]);
-        setPendingGenerate(true);
+            setMessages(prev => [...prev, newMsg]);
+            setPendingGenerate(true);
+        };
+
+        if (getChatPluginHookBus().hasHandlers("user.beforeSend")) {
+            void runChatPluginTransform("user.beforeSend", {
+                text: trimmed,
+                sessionId: session.id,
+                isGroup: !!session.isGroup,
+                cancelled: false,
+            }).then(payload => {
+                if (payload.cancelled) return;
+                const finalText = typeof payload.text === "string" ? payload.text.trim() : trimmed;
+                if (finalText) commitSendText(finalText);
+            });
+        } else {
+            commitSendText(trimmed);
+        }
         return true;
     };
 
@@ -4406,6 +4427,18 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
                     {m.mediaType === "audio" && m.mediaData?.label && (
                         <button onClick={() => { setVoiceTextIds(prev => { const next = new Set(prev); if (next.has(m.id)) next.delete(m.id); else next.add(m.id); return next; }); setActiveMessageId(null); }} className="ctx-menu-btn">转文字</button>
                     )}
+                    {getChatPluginRuntime().getMessageActions(m).map(action => (
+                        <button
+                            key={action.id}
+                            onClick={() => {
+                                void getChatPluginRuntime().runMessageAction(action, m);
+                                setActiveMessageId(null);
+                            }}
+                            className="ctx-menu-btn"
+                        >
+                            {action.label}
+                        </button>
+                    ))}
                     <button onClick={() => handleDeleteMessage(m.id)} className="ctx-menu-btn ctx-menu-btn-danger">删除</button>
                     <button onClick={() => handleDeleteMessagesFrom(m.id)} className="ctx-menu-btn ctx-menu-btn-danger">删除以下</button>
                     {m.role === "assistant" && (
@@ -5002,6 +5035,11 @@ export function ChatRoom({ session, onBack }: ChatRoomProps) {
                     </span>
                 </div>
             </header>
+            <ChatPluginSlot
+                name="chat.header"
+                slotProps={{ sessionId: session.id, isGroup: !!session.isGroup }}
+                className="chat-plugin-header chat-room-main-pane"
+            />
 
             {/* Message List */}
             <div
