@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, Camera, ChevronDown, Image, RefreshCw, Trash2, Upload } from "lucide-react";
+import { AlertCircle, Camera, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import type { ImageGenerationSettings as ImageGenerationSettingsType } from "@/lib/settings-types";
 import {
     DEFAULT_IMAGE_GENERATION_SETTINGS,
@@ -18,6 +18,7 @@ import {
 } from "@/lib/image-generation-service";
 import { Alert } from "@/components/ui/feedback";
 import { Input, Select, Textarea, Toggle } from "@/components/ui/form";
+import { BottomSheet } from "@/components/ui/modal";
 
 const SIZE_OPTIONS = ["auto", "1024x1024", "1024x1536", "1536x1024"];
 const QUALITY_OPTIONS = ["auto", "low", "medium", "high"];
@@ -57,6 +58,8 @@ export function ImageGenerationSettings() {
     const [isTesting, setIsTesting] = useState(false);
     const [status, setStatus] = useState<Status | null>(null);
     const [testPreviewUrl, setTestPreviewUrl] = useState<string | null>(null);
+    const [activeCharacterId, setActiveCharacterId] = useState<string | null>(null);
+    const [draftCharacterPrompt, setDraftCharacterPrompt] = useState("");
 
     useEffect(() => {
         // Sync the ratio hint to the saved size on load, so the hint is present
@@ -161,9 +164,39 @@ export function ImageGenerationSettings() {
             ...settings,
             characterReferences: {
                 ...(settings.characterReferences || {}),
-                [characterId]: { assetId, updatedAt: Date.now() },
+                [characterId]: { assetId, updatedAt: Date.now(), prompt: settings.characterReferences?.[characterId]?.prompt },
             },
         });
+    };
+
+    const updateCharacterReferencePrompt = (characterId: string, prompt: string) => {
+        persist({
+            ...settings,
+            characterReferences: {
+                ...(settings.characterReferences || {}),
+                [characterId]: {
+                    assetId: settings.characterReferences?.[characterId]?.assetId || "",
+                    updatedAt: settings.characterReferences?.[characterId]?.updatedAt || Date.now(),
+                    prompt,
+                },
+            },
+        });
+    };
+
+    const openCharacterReference = (characterId: string) => {
+        const reference = settings.characterReferences?.[characterId];
+        setActiveCharacterId(characterId);
+        setDraftCharacterPrompt(reference?.prompt ?? "");
+    };
+
+    const saveCharacterReferencePrompt = () => {
+        if (!activeCharacterId) return;
+        if (!settings.characterReferences?.[activeCharacterId] && !draftCharacterPrompt.trim()) {
+            setActiveCharacterId(null);
+            return;
+        }
+        updateCharacterReferencePrompt(activeCharacterId, draftCharacterPrompt);
+        setActiveCharacterId(null);
     };
 
     const removeReference = (characterId: string) => {
@@ -175,6 +208,11 @@ export function ImageGenerationSettings() {
             delete next[characterId];
             return next;
         });
+    };
+
+    const resetCharacterReference = (characterId: string) => {
+        removeReference(characterId);
+        setDraftCharacterPrompt("");
     };
 
     return (
@@ -313,7 +351,7 @@ export function ImageGenerationSettings() {
                         disabled={isTesting}
                         className="ui-btn ui-btn-success flex-1"
                     >
-                        <Image size={16} />
+                        <Camera size={16} />
                         {isTesting ? "测试中..." : "测试生图"}
                     </button>
                 </div>
@@ -343,8 +381,9 @@ export function ImageGenerationSettings() {
                         </div>
                     ) : characters.map(character => {
                         const preview = referencePreviews[character.id];
+                        const reference = settings.characterReferences?.[character.id];
                         return (
-                            <div key={character.id} className="menu-item">
+                            <button key={character.id} type="button" className="menu-item character-reference-row" onClick={() => openCharacterReference(character.id)}>
                                 <span className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-[var(--c-input)]">
                                     {preview ? (
                                         <img src={preview} alt="" className="h-full w-full object-cover" />
@@ -358,13 +397,36 @@ export function ImageGenerationSettings() {
                                 </span>
                                 <span className="min-w-0 flex flex-1 flex-col">
                                     <span className="menu-label truncate">{character.name}</span>
-                                    <span className="menu-desc truncate">{preview ? "已上传参考图" : "未上传参考图"}</span>
+                                    <span className="menu-desc truncate">{preview ? "已上传参考图" : "未上传参考图"}{reference?.prompt?.trim() ? " · 已设置专属词" : " · 未设置专属词"}</span>
                                 </span>
                                 <span className="menu-right flex gap-2">
+                                    <ChevronRight size={18} className="text-[var(--c-icon)]" />
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {activeCharacterId && (() => {
+                const character = characters.find(item => item.id === activeCharacterId);
+                if (!character) return null;
+                const reference = settings.characterReferences?.[character.id];
+                const preview = referencePreviews[character.id];
+                return (
+                    <BottomSheet
+                        title={character.name || "角色参考"}
+                        overlayClassName="character-reference-sheet-overlay"
+                        onClose={() => setActiveCharacterId(null)}
+                        onDone={saveCharacterReferencePrompt}
+                    >
+                        <div className="flex flex-col gap-4 pb-2">
+                            <div className="character-reference-editor">
+                                <div className="character-reference-actions">
+                                    <span className="menu-desc">AI 会优先使用这里的专属参考图和词；若留空，则默认按角色设定生成。</span>
                                     <button
                                         type="button"
-                                        className="ui-link-btn"
-                                        aria-label={`上传 ${character.name} 的参考图`}
+                                        className="ui-btn ui-btn-soft-action character-reference-upload h-10 w-full"
                                         onClick={() => {
                                             const input = document.createElement("input");
                                             input.type = "file";
@@ -375,26 +437,40 @@ export function ImageGenerationSettings() {
                                             };
                                             input.click();
                                         }}
+                                        aria-label="上传参考图"
                                     >
-                                        <Upload size={18} />
+                                        上传参考图
                                     </button>
-                                    {preview && (
-                                        <button
-                                            type="button"
-                                            className="ui-link-btn"
-                                            data-variant="danger"
-                                            aria-label={`删除 ${character.name} 的参考图`}
-                                            onClick={() => removeReference(character.id)}
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                    <button
+                                        type="button"
+                                        className="ui-btn character-reference-reset h-9 w-full"
+                                        onClick={() => resetCharacterReference(character.id)}
+                                    >
+                                        恢复默认
+                                    </button>
+                                </div>
+                                <div className="character-reference-preview">
+                                    {preview ? (
+                                        <img src={preview} alt={`${character.name}参考图`} />
+                                    ) : (
+                                        <span>暂无参考图</span>
                                     )}
-                                </span>
+                                </div>
                             </div>
-                        );
-                    })}
-                </div>
-            </div>
+
+                            <div className="flex flex-col gap-1">
+                                <label className="menu-desc ml-1">角色专属生图词</label>
+                                <Textarea
+                                    value={draftCharacterPrompt}
+                                    onChange={(event) => setDraftCharacterPrompt(event.target.value)}
+                                    placeholder="例如：半身像，银白长发，冷淡表情，电影感侧光"
+                                    rows={5}
+                                />
+                            </div>
+                        </div>
+                    </BottomSheet>
+                );
+            })()}
 
         </div>
     );

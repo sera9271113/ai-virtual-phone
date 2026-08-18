@@ -181,10 +181,20 @@ function HtmlPageSegment({ html, onOptionSelect, htmlPageMode }: HtmlPageProps) 
                 .replace(/\*(.+?)\*/g, "<em>$1</em>")
             + close
         );
+        const patchedBridge = bridge
+            .replace(
+                'function relayScroll(dy){window.parent.postMessage({type:"_rhr_scroll",dy:dy},"*")}function send()',
+                'function relayScroll(dy){window.parent.postMessage({type:"_rhr_scroll",dy:dy},"*")}function resetTouch(){window.__rhr_lastY=null}function send()'
+            )
+            .replace(
+                'document.addEventListener("touchmove",function(e){if(${contained ? "true" : "false"}){var t=e.touches&&e.touches[0];if(t){var last=window.__rhr_lastY||t.clientY;var dy=last-t.clientY;scrollByDelta(dy);relayScroll(dy);window.__rhr_lastY=t.clientY}e.preventDefault();e.stopPropagation()}},{passive:false});document.addEventListener("touchstart",function(e){var t=e.touches&&e.touches[0];window.__rhr_lastY=t?t.clientY:0},{passive:true});',
+                'document.addEventListener("touchstart",function(e){if(${contained ? "true" : "false"}){var t=e.touches&&e.touches[0];window.__rhr_lastY=t?t.clientY:null}},{passive:true});document.addEventListener("touchmove",function(e){if(${contained ? "true" : "false"}){var t=e.touches&&e.touches[0];if(t){var last=window.__rhr_lastY==null?t.clientY:window.__rhr_lastY;var dy=last-t.clientY;scrollByDelta(dy);relayScroll(dy);window.__rhr_lastY=t.clientY}e.preventDefault();e.stopPropagation()}},{passive:false});document.addEventListener("touchend",resetTouch,{passive:true});document.addEventListener("touchcancel",resetTouch,{passive:true});'
+            );
+
         // Patch template JS: .textContent → .innerHTML so <strong>/<em> tags are preserved
         h = h.replace(/\.textContent\.trim\(\)/g, ".innerHTML.trim()");
-        if (h.includes("</body>")) h = h.replace("</body>", bridge + "</body>");
-        else h = h + bridge;
+        if (h.includes("</body>")) h = h.replace("</body>", patchedBridge + "</body>");
+        else h = h + patchedBridge;
         return h;
     }, [html, contained]);
 

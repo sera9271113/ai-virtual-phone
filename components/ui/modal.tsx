@@ -88,6 +88,7 @@ export type BottomSheetProps = {
   title: string;
   onClose: () => void;
   onDone?: () => void;
+  overlayClassName?: string;
   children: ReactNode;
 };
 
@@ -95,10 +96,11 @@ export function BottomSheet({
   title,
   onClose,
   onDone,
+  overlayClassName,
   children,
 }: BottomSheetProps) {
   return (
-    <div className="modal-overlay" data-ui="modal" onClick={onClose}>
+    <div className={`modal-overlay modal-overlay-bottom ${overlayClassName ?? ""}`} data-ui="modal" onClick={onClose}>
       <div className="modal-sheet" data-ui="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header" data-ui="modal-header">
           <button className="modal-header-btn modal-header-btn-muted" onClick={onClose}><X size={18} /></button>
@@ -112,6 +114,11 @@ export function BottomSheet({
         <div className="modal-body" data-ui="modal-body">
           {children}
         </div>
+        {onDone && (
+          <div className="modal-footer" data-ui="modal-footer">
+            <button className="ui-btn ui-btn-primary w-full" onClick={onDone}>保存</button>
+          </div>
+        )}
       </div>
     </div>
   );

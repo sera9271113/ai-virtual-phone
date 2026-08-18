@@ -182,6 +182,7 @@ export type ImageGenerationSettings = {
     characterReferences: Record<string, {
         assetId: string;
         updatedAt: number;
+        prompt?: string;
     }>;
 };
 

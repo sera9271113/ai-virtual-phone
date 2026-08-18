@@ -635,7 +635,14 @@ export const DEFAULT_IMAGE_GENERATION_SETTINGS: ImageGenerationSettings = {
 
 function normalizeImageGenerationSettings(settings: Partial<ImageGenerationSettings> | null | undefined): ImageGenerationSettings {
     const refs = settings?.characterReferences && typeof settings.characterReferences === "object"
-        ? settings.characterReferences
+        ? Object.fromEntries(Object.entries(settings.characterReferences).filter(([, ref]) => ref && typeof ref === "object").map(([characterId, ref]) => {
+            const record = ref as { assetId?: unknown; updatedAt?: unknown; prompt?: unknown };
+            return [characterId, {
+                assetId: typeof record.assetId === "string" ? record.assetId : "",
+                updatedAt: typeof record.updatedAt === "number" ? record.updatedAt : Date.now(),
+                prompt: typeof record.prompt === "string" ? record.prompt : undefined,
+            }];
+        }))
         : {};
     const requestMode = settings?.requestMode === "server" || settings?.requestMode === "direct"
         ? settings.requestMode

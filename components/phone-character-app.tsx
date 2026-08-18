@@ -582,7 +582,7 @@ function CharListView({
 
       {/* 转移世界 Modal */}
       {activeMoveChar && (
-        <div className="modal-overlay" data-ui="modal" onPointerDown={() => setActiveMoveChar(null)}>
+        <div className="modal-overlay" data-ui="modal">
           <div className="modal-dialog" data-ui="modal-dialog" onPointerDown={(e) => e.stopPropagation()} style={{ padding: 0, overflow: 'hidden' }}>
             <div className="modal-header" data-ui="modal-header" style={{ padding: '20px 20px 10px' }}>
               <h3 className="modal-title" style={{ margin: 0, fontSize: '16px' }}>转移到其他文件夹</h3>
@@ -1426,9 +1426,6 @@ function CharArchiveView({
     >
       <div
         className="char-archive-backdrop"
-        onPointerDown={e => {
-          if (e.target === e.currentTarget) handleBack();
-        }}
       >
         {archiveFrame}
       </div>

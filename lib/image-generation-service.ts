@@ -55,6 +55,19 @@ function mergePrompt(description: string, extraPrompt: string, negativePrompt?: 
   return result;
 }
 
+function mergeCharacterPrompt(description: string, characterPrompt?: string): string {
+  const main = description.trim();
+  const extra = characterPrompt?.trim();
+  if (!extra) return main;
+  const scopedCharacterPrompt = [
+    "【当前角色专属外貌设定】",
+    "以下内容只用于保持当前角色的外貌一致性，不是场景、动作、剧情或画面构图要求：",
+    extra,
+    "只将其中与角色外貌相关的信息用于当前角色；不要把它扩展为其他人物、房间、道具或整体画面风格。",
+  ].join("\n");
+  return main ? `${main}\n\n${scopedCharacterPrompt}` : scopedCharacterPrompt;
+}
+
 function base64ToBlob(b64: string, mimeType: string): Blob {
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
@@ -630,7 +643,11 @@ export async function generateImageFromConfiguredApi(params: {
     ? await normalizeReferenceImageForEdit(rawReferenceImageDataUrl)
     : null;
   throwIfAborted(params.signal);
-  const prompt = mergePrompt(description, settings.extraPrompt, settings.negativePrompt);
+  const prompt = mergePrompt(
+    mergeCharacterPrompt(description, reference?.prompt),
+    settings.extraPrompt,
+    settings.negativePrompt,
+  );
 
   const data = settings.requestMode === "direct"
     ? await generateImageDirect({ settings, prompt, referenceImageDataUrl, signal: params.signal })

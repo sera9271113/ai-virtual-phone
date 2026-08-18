@@ -159,6 +159,7 @@ export type WeixinCloudImageGenerationContext = {
   size: string;
   quality: string;
   extraPrompt: string;
+  characterPrompt?: string;
   referenceImageDataUrl?: string;
   referenceUpdatedAt?: number;
 };
@@ -734,6 +735,7 @@ async function buildWeixinCloudImageGenerationContext(characterId: string): Prom
     size: settings.size,
     quality: settings.quality,
     extraPrompt: settings.extraPrompt,
+    characterPrompt: reference?.prompt?.trim() || undefined,
     ...(normalizedReferenceImageDataUrl ? { referenceImageDataUrl: normalizedReferenceImageDataUrl } : {}),
     ...(reference?.updatedAt ? { referenceUpdatedAt: reference.updatedAt } : {}),
   };

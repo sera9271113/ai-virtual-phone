@@ -962,6 +962,10 @@
   border-top: 1px solid rgba(255, 255, 255, 0.14);
   display: flex;
   flex-direction: column;
+  isolation: isolate;
+  contain: layout paint;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   animation: dw2-sheet-in 0.28s ease both;
 }
 .dwelling-items-header {
@@ -1013,6 +1017,9 @@
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+  contain: layout paint;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 12px 14px calc(18px + env(safe-area-inset-bottom, 0px));
@@ -1020,6 +1027,8 @@
 
 .dwelling-detail-html iframe {
   background: #f7f4ee;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* Keep Chinese UI text as compact as the room description copy. */

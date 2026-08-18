@@ -832,6 +832,34 @@
   justify-content: center;
 }
 
+@media (max-width: 520px) {
+  .identity-card-grid {
+    width: 100%;
+    max-width: none;
+    gap: 12px;
+  }
+
+  .identity-id-card {
+    min-height: 212px;
+    aspect-ratio: 0.88;
+    padding: 10px 9px 9px;
+  }
+
+  .identity-id-card__avatar {
+    width: 62px;
+    height: 72px;
+    margin-bottom: 10px;
+  }
+
+  .identity-id-card__details {
+    width: calc(100% - 20px);
+  }
+
+  .identity-id-card__details > div {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+}
+
 .identity-id-card {
   position: relative;
   isolation: isolate;
@@ -2751,6 +2779,11 @@
   position: relative;
   width: 100%;
 }
+
+.character-reference-row {
+  appearance: none;
+  -webkit-appearance: none;
+}
 .menu-item:not(:last-child)::after {
   content: "";
   position: absolute;
@@ -4533,6 +4566,88 @@
   transition: opacity 0.15s;
 }
 .ui-avatar-upload:hover .ui-avatar-upload-overlay { opacity: 1; }
+
+.character-reference-upload {
+  width: 100%;
+}
+
+.character-reference-upload:active {
+  opacity: 0.75;
+}
+
+.character-reference-sheet-overlay .modal-sheet {
+  max-height: 96%;
+}
+
+.character-reference-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.character-reference-actions {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.character-reference-actions > .menu-desc {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  padding: 4px 2px;
+}
+
+.character-reference-actions > button {
+  min-height: 48px;
+}
+
+.character-reference-reset {
+  border: 1px solid var(--c-card-border);
+  background: transparent;
+  color: var(--c-icon-active);
+}
+
+.character-reference-reset:active {
+  opacity: 0.75;
+}
+
+.character-reference-preview {
+  display: flex;
+  width: 220px;
+  height: 250px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--c-card-border);
+  border-radius: 10px;
+  background: var(--c-input);
+  color: var(--c-icon);
+  font-size: calc(12px*var(--app-text-scale,1));
+  text-align: center;
+}
+
+.character-reference-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+@media (max-width: 380px) {
+  .character-reference-editor {
+    grid-template-columns: minmax(0, 1fr) 165px;
+    gap: 12px;
+  }
+
+  .character-reference-preview {
+    width: 165px;
+    height: 210px;
+  }
+}
 
 /* ── Color Input ── */
 .ui-color-input {
