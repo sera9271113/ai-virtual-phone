@@ -663,7 +663,7 @@ export function DataManagement({ onNotice }: DataManagementProps) {
               {busy === "导出中" ? <><Loader2 size={16} className="animate-spin" /> 导出中…</> : <><Upload size={16} /> 导出备份</>}
             </button>
             <button type="button" className={`ui-btn ui-btn-outline ${busy === "读取备份" ? "is-busy" : ""}`} onClick={() => fileInputRef.current?.click()} disabled={Boolean(busy)}>
-              {busy === "读取备份" ? <><Loader2 size={16} className="animate-spin" /> 读取中…</> : <><Upload size={16} /> 导入备份</>}
+              {busy === "读取备份" ? <><Loader2 size={16} className="animate-spin" /> 读取中…</> : <><Download size={16} /> 导入备份</>}
             </button>
           </div>
           <input

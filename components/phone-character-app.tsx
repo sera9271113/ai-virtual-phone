@@ -33,7 +33,6 @@ import {
 } from "@/lib/character-world-storage";
 import { WorldFolderStrip, WorldCaseSheet, NewWorldSheet } from "@/components/character/world-tabs";
 import { CharacterCarousel } from "@/components/character/character-carousel";
-import { ColorWheelPicker } from "@/components/character/color-wheel-picker";
 import { RelationLinkDialog, RelationPairSheet } from "@/components/character/relation-dialogs";
 import { loadMomentsConfig, saveMomentsConfig } from "@/lib/moments-storage";
 import { PageShell } from "@/components/ui/page-shell";
@@ -45,24 +44,12 @@ import { normalizeTimeZone } from "@/lib/character-time";
 
 type ViewType = "list" | "detail";
 
-// 角色卡片色轮的兜底色：与 character-card.tsx 的 FALLBACK_CARD_COLOR 保持一致，
-// 各自维护一份互不依赖。不再提供快捷预设色板——颜色完全交给色轮自定义。
-const FALLBACK_CARD_COLOR = "#ffffff";
-
 
 
 // 关系连线：与世界观关系同步——同一对角色间的多条关系合并为一条线，标签并列显示
 type RelationLine = { key: string; aId: string; bId: string; labels: string[] };
 
 const WORLD_TAB_KEY = 'ai_phone_character_app_world_v1';
-
-type TransitionState = {
-  char: Character;
-  sourceRect: DOMRect;
-  phase: "start" | "fly" | "flip";
-  onComplete?: () => void;
-  reverse?: boolean;
-};
 
 type PhoneCharacterAppProps = {
   onClose: () => void;
@@ -126,7 +113,6 @@ function getCharacterTimeZoneOptions(currentTimeZone = ""): string[] {
 export function PhoneCharacterApp({ onClose, onNotice }: PhoneCharacterAppProps) {
   const [view, setView] = useState<{ type: ViewType; id: string | null; isEditing?: boolean }>({ type: "list", id: null, isEditing: false });
   const [characters, setCharacters] = useState<Character[]>(() => loadCharacters());
-  const [transition, setTransition] = useState<TransitionState | null>(null);
 
   // ── 世界文件夹：分组数据 + 当前打开的文件夹（持久记忆） ──
   // 记住用户最近打开/编辑的角色 id：从详情/编辑页返回列表时，轮播据此定位回同一张卡，
@@ -167,27 +153,7 @@ export function PhoneCharacterApp({ onClose, onNotice }: PhoneCharacterAppProps)
   // Handle clicking a polaroid
   function handleSelectChar(char: Character, e: React.MouseEvent<HTMLDivElement>) {
     lastFocusedCharIdRef.current = char.id;
-    const rect = e.currentTarget.getBoundingClientRect();
-
-    setTransition({
-      char,
-      sourceRect: rect,
-      phase: "start",
-    });
-
-    // Animate
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setTransition((p) => p ? { ...p, phase: "fly" } : null);
-        setTimeout(() => {
-          setTransition((p) => p ? { ...p, phase: "flip" } : null);
-          setTimeout(() => {
-            setView({ type: "detail", id: char.id });
-            setTransition(null);
-          }, 400); // Wait for flip 0.4s
-        }, 400); // Wait for fly 0.4s
-      });
-    });
+    setView({ type: "detail", id: char.id });
   }
 
   // Handle back from detail
@@ -198,21 +164,19 @@ export function PhoneCharacterApp({ onClose, onNotice }: PhoneCharacterAppProps)
   return (
     <>
       <div className="char-app">
-        {view.type === "list" && (
-          <CharListView
-            characters={characters}
-            worldGroups={worldGroups}
-            currentWorldId={safeWorldId}
-            onSelectWorld={selectWorldId}
-            onUpdateChars={updateChars}
-            onWorldGroupsChange={syncWorldGroups}
-            onClose={onClose}
-            onSelect={handleSelectChar}
-            onCreate={() => setView({ type: "detail", id: null, isEditing: true })}
-            onNotice={onNotice}
-            focusCharacterId={lastFocusedCharIdRef.current}
-          />
-        )}
+        <CharListView
+          characters={characters}
+          worldGroups={worldGroups}
+          currentWorldId={safeWorldId}
+          onSelectWorld={selectWorldId}
+          onUpdateChars={updateChars}
+          onWorldGroupsChange={syncWorldGroups}
+          onClose={onClose}
+          onSelect={handleSelectChar}
+          onCreate={() => setView({ type: "detail", id: null, isEditing: true })}
+          onNotice={onNotice}
+          focusCharacterId={lastFocusedCharIdRef.current}
+        />
 
         {view.type === "detail" && (
           <CharArchiveView
@@ -274,100 +238,7 @@ export function PhoneCharacterApp({ onClose, onNotice }: PhoneCharacterAppProps)
         )}
       </div>
 
-      {/* Fly & Flip Transition Overlay */}
-      {transition && (
-        <FlipTransitionOverlay transit={transition} />
-      )}
     </>
-  );
-}
-
-// ── 过渡动效层 ───────────────────────────────────────
-
-function FlipTransitionOverlay({ transit }: { transit: TransitionState }) {
-  const { char, sourceRect, phase } = transit;
-
-  // Calculate relative bounds based on parent .phone-shell
-  const [shellRect, setShellRect] = useState<DOMRect | null>(null);
-
-  useEffect(() => {
-    const shell = document.querySelector(".char-app");
-    if (shell) setShellRect(shell.getBoundingClientRect());
-  }, []);
-
-  if (!shellRect) return null;
-
-  // The final target rect inside the phone shell
-  // We'll occupy the full width and height of the phone shell
-  const targetWidth = shellRect.width;
-  const targetHeight = shellRect.height;
-  const targetTop = shellRect.top;
-  const targetLeft = shellRect.left;
-
-  // Render variables
-  const isStart = phase === "start";
-
-  const currentTop = isStart ? sourceRect.top : targetTop;
-  const currentLeft = isStart ? sourceRect.left : targetLeft;
-  const currentWidth = isStart ? sourceRect.width : targetWidth;
-  const currentHeight = isStart ? sourceRect.height : targetHeight;
-
-  // 3D Rotation
-  const isFlipped = phase === "flip";
-
-  const duration = isStart ? "0s" : "0.4s";
-
-  return (
-    <div
-      className="char-flipper-container fixed"
-      style={{
-        top: currentTop,
-        left: currentLeft,
-        width: currentWidth,
-        height: currentHeight,
-        transition: `all ${duration} cubic-bezier(0.25, 1, 0.5, 1)`,
-      }}
-    >
-      <div
-        className="char-flipper-inner"
-        style={{
-          transition: `transform ${duration} ease-in-out`,
-          transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-        }}
-      >
-        <div className="char-flipper-front" style={{ padding: isStart ? 0 : "12px" }}>
-          {/* Polaroid Front */}
-          <div className="char-polaroid w-full h-full border-none shadow-none" style={{
-            transition: `padding ${duration} ease`
-          }}>
-            {isStart && <div className="char-polaroid-tape" />}
-            <div className="char-polaroid-img-wrapper" style={{
-              height: isStart ? "auto" : "100%",
-              aspectRatio: isStart ? "1/1" : "auto",
-              transition: `all ${duration} ease`
-            }}>
-              {char.avatar ? (
-                <img src={char.avatar} className="char-polaroid-img" alt="" />
-              ) : (
-                <div className="w-full h-full bg-[#9b8aaa]" />
-              )}
-            </div>
-            {isStart && <div className="char-polaroid-text">{char.name || "UNNAMED"}</div>}
-          </div>
-        </div>
-
-        <div className="char-flipper-back">
-          {/* Scaled down or full archive rendering so it doesn't look weird */}
-          <div className="absolute top-0 left-0" style={{
-            width: targetWidth, height: targetHeight,
-            opacity: isFlipped ? 1 : 0.5,
-            transition: `opacity ${duration} ease`
-          }}>
-            <CharArchiveView dummy char={char} onBack={() => { }} onEdit={() => { }} onDelete={() => { }} onExportJson={() => { }} onExportPng={async () => { }} />
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -872,9 +743,12 @@ function CharArchiveView({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState<"back" | "cancel" | null>(null);
   const [name, setName] = useState(char.name || "");
+  const [wechatID, setWechatID] = useState(char.wechatID || "");
   const [persona, setPersona] = useState(char.persona || "");
   const [personality, setPersonality] = useState(char.personality || "");
   const [briefPersona, setBriefPersona] = useState(char.briefPersona || "");
+  const [personaTab, setPersonaTab] = useState<"brief" | "detail" | "personality">("brief");
+  const [showIdActions, setShowIdActions] = useState(false);
   const [briefBusy, setBriefBusy] = useState(false);
   const [briefError, setBriefError] = useState("");
   const [timeZone, setTimeZone] = useState(char.timeZone || "");
@@ -885,7 +759,6 @@ function CharArchiveView({
   const [avatar, setAvatar] = useState<string | null>(char.avatar || null);
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlInput, setUrlInput] = useState("");
-  const [cardColor, setCardColor] = useState(char.cardColor || FALLBACK_CARD_COLOR);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Send mascot page context (on mount + field changes)
@@ -931,12 +804,12 @@ function CharArchiveView({
   function isDirty(): boolean {
     if (!isEditing) return false;
     if (name !== (char.name || "")) return true;
+    if (wechatID !== (char.wechatID || "")) return true;
     if (persona !== (char.persona || "")) return true;
     if (personality !== (char.personality || "")) return true;
     if (briefPersona !== (char.briefPersona || "")) return true;
     if (timeZone !== (char.timeZone || "")) return true;
     if (avatar !== (char.avatar || null)) return true;
-    if (cardColor !== (char.cardColor || FALLBACK_CARD_COLOR)) return true;
     const origTags = char.tags || [];
     if (tags.length !== origTags.length || tags.some((t, i) => t !== origTags[i])) return true;
     return false;
@@ -945,6 +818,8 @@ function CharArchiveView({
   function handleBack() {
     if (isDirty()) {
       setShowUnsavedConfirm("back");
+    } else if (isEditing) {
+      onCancelEdit?.();
     } else {
       onBack();
     }
@@ -953,6 +828,7 @@ function CharArchiveView({
   useEffect(() => {
     if (!isEditing) {
       setName(char.name || "");
+      setWechatID(char.wechatID || "");
       setPersona(char.persona || "");
       setPersonality(char.personality || "");
       setBriefPersona(char.briefPersona || "");
@@ -962,7 +838,6 @@ function CharArchiveView({
       setShowTimeZonePicker(false);
       setTags(char.tags || []);
       setAvatar(char.avatar || null);
-      setCardColor(char.cardColor || FALLBACK_CARD_COLOR);
     }
   }, [isEditing, char]);
 
@@ -995,6 +870,7 @@ function CharArchiveView({
       const trimmedBrief = briefPersona.trim();
       onSave({
         name: name.trim() || char.name || "UNNAMED",
+        wechatID: wechatID.trim() || undefined,
         persona,
         personality: personality.trim() || undefined,
         briefPersona: trimmedBrief || undefined,
@@ -1005,7 +881,6 @@ function CharArchiveView({
         timeZone: normalizedTimeZone,
         tags,
         avatar: avatar ?? null,
-        cardColor,
       });
     }
   }
@@ -1065,15 +940,127 @@ function CharArchiveView({
     setShowTimeZonePicker(false);
   }
 
-  const archiveFrame = (
-      <div className="char-archive-frame">
-        <div className="char-archive-header">
+  const editFrame = (
+    <>
+      <div className="char-id-card char-id-edit-card">
+        <div className="char-id-toolbar">
+          <button type="button" className="char-id-icon-btn" onClick={handleBack} aria-label="返回">
+            <IconBack />
+          </button>
+          <button type="button" className="char-id-save-btn" onClick={handleSave} aria-label="保存角色">
+            保存
+          </button>
+        </div>
+
+        <div
+          className="char-id-avatar char-id-avatar-edit"
+          style={{ cursor: "pointer" }}
+          onClick={() => fileRef.current?.click()}
+        >
+          {avatar ? (
+            <img src={avatar} alt="Avatar" />
+          ) : (
+            <CharAvatarFallback name={name || char.name} size="100%" />
+          )}
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file) await handleAvatarFile(file);
+            e.target.value = "";
+          }}
+        />
+        <button type="button" className="char-id-avatar-link" onClick={() => setShowUrlInput(value => !value)}>
+          更换头像
+        </button>
+        {showUrlInput && (
+          <div className="char-id-url-row">
+            <input
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAvatarUrl(); }}
+              placeholder="图片 URL"
+            />
+            <button type="button" onClick={handleAvatarUrl}>确定</button>
+          </div>
+        )}
+
+        <div className="char-id-meta char-id-edit-meta">
           <div>
-            <div className="char-archive-title">{isEditing ? "EDITING ARCHIVE" : "ARCHIVAL\nINFORMATION"}</div>
-            <div className="char-archive-subtitle">THE INTELLIGENCE DATABASE</div>
+            <span>NAME</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="UNNAMED" />
+          </div>
+          <div>
+            <span>WECHAT</span>
+            <input value={wechatID} onChange={(e) => setWechatID(e.target.value)} placeholder="N/A" />
+          </div>
+          <div>
+            <span>UPDATED</span>
+            <strong>{char.updatedAt ? char.updatedAt.slice(0, 10).replace(/-/g, "/") : "N/A"}</strong>
+          </div>
+          <div className="char-id-tags-row">
+            <span>TAGS</span>
+            <div className="char-id-tags-editor">
+              {tags.map((tag, index) => (
+                <span key={`${tag}-${index}`} className="char-id-tag-value">
+                  {tag}
+                  <button type="button" onClick={() => setTags(tags.filter((_, tagIndex) => tagIndex !== index))} aria-label={`删除标签 ${tag}`}>×</button>
+                </span>
+              ))}
+              <input
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAddTag(); } }}
+                placeholder="添加标签"
+              />
+              <button
+                type="button"
+                className="char-id-add-tag-btn"
+                onClick={handleAddTag}
+                aria-label="添加标签"
+                title="添加标签"
+              >+</button>
+            </div>
           </div>
         </div>
 
+        <div className="char-id-edit-fields">
+          <div className="char-id-persona-tabs char-id-edit-persona-tabs" role="tablist" aria-label="编辑角色人设">
+            <button type="button" role="tab" aria-selected={personaTab === "brief"} className={personaTab === "brief" ? "is-active" : ""} onClick={() => setPersonaTab("brief")}>Brief</button>
+            <button type="button" role="tab" aria-selected={personaTab === "detail"} className={personaTab === "detail" ? "is-active" : ""} onClick={() => setPersonaTab("detail")}>Detail</button>
+            <button type="button" role="tab" aria-selected={personaTab === "personality"} className={personaTab === "personality" ? "is-active" : ""} onClick={() => setPersonaTab("personality")}>Personality</button>
+          </div>
+          <div className="char-id-edit-persona-panel">
+            {personaTab === "brief" && (
+              <div>
+                <div className="char-id-edit-field-heading">
+                  <span>简略人设</span>
+                  <button type="button" disabled={briefBusy} onClick={handleGenerateBrief}>{briefBusy ? "生成中…" : briefPersona.trim() ? "重新生成" : "AI 生成"}</button>
+                </div>
+                {briefError && <p className="ts-10 mt-1" style={{ color: "#b4233b" }}>{briefError}</p>}
+                <AutoResizingTextarea value={briefPersona} onChange={setBriefPersona} placeholder="No brief persona" minHeight={54} className="char-id-edit-textarea" />
+              </div>
+            )}
+            {personaTab === "detail" && (
+              <div>
+                <div className="char-id-edit-field-heading"><span>详细人设</span></div>
+                <AutoResizingTextarea value={persona} onChange={setPersona} placeholder="No detailed persona" minHeight={72} className="char-id-edit-textarea" />
+              </div>
+            )}
+            {personaTab === "personality" && (
+              <div>
+                <div className="char-id-edit-field-heading"><span>性格</span></div>
+                <AutoResizingTextarea value={personality} onChange={setPersonality} placeholder="No personality" minHeight={54} className="char-id-edit-textarea" />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      {false && `
         <div className="char-archive-body">
           <div className="char-archive-left">
             <div
@@ -1176,32 +1163,6 @@ function CharArchiveView({
               </div>
             </div>
 
-          </div>
-        </div>
-
-        <div className="char-archive-row">
-          <div className="char-archive-cell" style={{ flex: 1 }}>
-            <span className="char-archive-label">Card Color</span>
-            {isEditing ? (
-              <div className="flex flex-col gap-2 mt-1">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="rounded-full shrink-0"
-                    style={{ width: 20, height: 20, background: cardColor, border: "1px solid rgba(0,0,0,0.2)" }}
-                  />
-                  <span className="char-archive-val tracking-[0.5px]">{cardColor.toUpperCase()}</span>
-                </div>
-                <ColorWheelPicker value={cardColor} onChange={setCardColor} />
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 mt-1">
-                <span
-                  className="rounded-full shrink-0"
-                  style={{ width: 16, height: 16, background: char.cardColor || FALLBACK_CARD_COLOR, border: "1px solid rgba(0,0,0,0.2)" }}
-                />
-                <span className="char-archive-val tracking-[0.5px]">{(char.cardColor || FALLBACK_CARD_COLOR).toUpperCase()}</span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -1364,12 +1325,88 @@ function CharArchiveView({
             ) : null
           )}
         </div>
-      </div>
+          </div>
+        </div>
+      `}
+      </>
   );
+
+  const viewFrame = (
+    <div className="char-id-card">
+      <div className="char-id-toolbar">
+        <button type="button" className="char-id-icon-btn" onClick={onEdit} aria-label="编辑角色">
+          <IconEdit />
+        </button>
+        <div className="char-id-actions-wrap">
+          <button
+            type="button"
+            className="char-id-icon-btn"
+            onClick={() => setShowIdActions(value => !value)}
+            aria-label="更多操作"
+            aria-expanded={showIdActions}
+          >
+            <IconGridDots />
+          </button>
+          {showIdActions && (
+            <div className="char-id-actions-menu" role="menu">
+              <button type="button" onClick={() => { setShowIdActions(false); void onExportPng(); }}>导出图片</button>
+              <button type="button" onClick={() => { setShowIdActions(false); onExportJson(); }}>导出 JSON</button>
+              {confirmDelete ? (
+                <div className="char-id-delete-confirm">
+                  <span>确认删除？</span>
+                  <button type="button" onClick={onDelete}>确认</button>
+                  <button type="button" onClick={() => setConfirmDelete(false)}>取消</button>
+                </div>
+              ) : (
+                <button type="button" className="is-danger" onClick={() => setConfirmDelete(true)}>删除角色</button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="char-id-avatar">
+        {avatar ? <img src={avatar} alt="Avatar" /> : <CharAvatarFallback name={name || char.name} size="100%" />}
+      </div>
+      <div className="char-id-meta">
+        <div><span>NAME</span><strong className="char-id-name-value">{name || "UNNAMED"}</strong></div>
+        <div><span>WECHAT</span><strong>{char.wechatID || "N/A"}</strong></div>
+        <div><span>UPDATED</span><strong>{char.updatedAt ? char.updatedAt.slice(0, 10).replace(/-/g, "/") : "N/A"}</strong></div>
+        <div><span>TAGS</span><strong>{char.tags?.length ? char.tags.join("  ·  ") : "N/A"}</strong></div>
+      </div>
+      <div className="char-id-persona-tabs" role="tablist" aria-label="角色人设">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={personaTab === "brief"}
+          className={personaTab === "brief" ? "is-active" : ""}
+          onClick={() => setPersonaTab("brief")}
+        >Brief</button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={personaTab === "detail"}
+          className={personaTab === "detail" ? "is-active" : ""}
+          onClick={() => setPersonaTab("detail")}
+        >Detail</button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={personaTab === "personality"}
+          className={personaTab === "personality" ? "is-active" : ""}
+          onClick={() => setPersonaTab("personality")}
+        >Personality</button>
+      </div>
+      <div className="char-id-persona" role="tabpanel">
+        {personaTab === "brief" ? (briefPersona || "暂无简略人设") : personaTab === "detail" ? personaText : (personality || "暂无 Personality")}
+      </div>
+    </div>
+  );
+
+  const archiveFrame = isEditing ? editFrame : viewFrame;
 
   if (dummy) {
     return (
-      <div className="char-archive-view" style={{ pointerEvents: "none" }}>
+      <div className="char-archive-view char-archive-view-dummy" style={{ pointerEvents: "none" }}>
         {archiveFrame}
       </div>
     );
@@ -1379,14 +1416,17 @@ function CharArchiveView({
     <PageShell
       title=""
       onBack={handleBack}
-      className="bg-[var(--c-page-body-bg)]"
-      rightAction={!isEditing ? (
-        <button className="char-action-btn" onClick={onEdit}>
-          <IconEdit />
-        </button>
-      ) : undefined}
+      className="char-archive-overlay bg-transparent"
+      rightAction={undefined}
     >
-      {archiveFrame}
+      <div
+        className="char-archive-backdrop"
+        onPointerDown={e => {
+          if (e.target === e.currentTarget) handleBack();
+        }}
+      >
+        {archiveFrame}
+      </div>
 
       {isEditing && showTimeZonePicker && (
         <div
@@ -1453,19 +1493,20 @@ function CharArchiveView({
       {/* Unsaved changes confirmation dialog */}
       {showUnsavedConfirm && (
         <ConfirmDialog
-          title="确定要放弃编辑吗？"
-          message="当前编辑内容尚未保存，离开后所有更改将丢失。"
+          title="是否保存当前修改？"
+          message="保存后返回，或直接放弃当前修改。"
           icon={AlertCircle}
-          variant="danger"
-          confirmLabel="放弃更改"
-          cancelLabel="继续编辑"
+          variant="action"
+          confirmLabel="保存并返回"
+          cancelLabel="不保存返回"
           onConfirm={() => {
-            const action = showUnsavedConfirm;
             setShowUnsavedConfirm(null);
-            if (action === "back") onBack();
-            else onCancelEdit?.();
+            handleSave();
           }}
-          onCancel={() => setShowUnsavedConfirm(null)}
+          onCancel={() => {
+            setShowUnsavedConfirm(null);
+            onCancelEdit?.();
+          }}
         />
       )}
     </PageShell>
@@ -1501,12 +1542,14 @@ function AutoResizingTextarea({
   placeholder,
   style,
   minHeight = 60,
+  className,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   style?: React.CSSProperties;
   minHeight?: number;
+  className?: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -1535,7 +1578,7 @@ function AutoResizingTextarea({
   return (
     <textarea
       ref={textareaRef}
-      className="resize-none overflow-hidden"
+      className={`resize-none overflow-hidden${className ? ` ${className}` : ""}`}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -1609,6 +1652,23 @@ function IconEdit() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
+function IconGridDots() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M4 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M11 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M18 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M4 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M11 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M18 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
     </svg>
   );
 }

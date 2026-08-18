@@ -1230,8 +1230,11 @@
 .calendar-unified-cell[data-has-items="true"] .calendar-unified-date {
   color: var(--c-calendar-text);
   font-weight: 500;
-  background: transparent;
-  box-shadow: none;
+  background: var(--c-calendar-accent);
+  box-shadow: 0 3px 10px var(--c-calendar-accent-dim);
+  border-radius: 50%;
+  min-width: 26px;
+  min-height: 26px;
 }
 
 .calendar-unified-cell[data-cycle="period"] .calendar-unified-date {

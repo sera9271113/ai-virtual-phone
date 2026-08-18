@@ -146,12 +146,11 @@ export function UserIdentitySettings() {
                     </button>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="identity-card-grid">
                     {identities.map(identity => (
                         <div
                             key={identity.id}
-                            className="ui-config-card min-w-0 cursor-pointer overflow-hidden"
-                            style={{ aspectRatio: "3 / 2", padding: "12px", justifyContent: "space-between" }}
+                            className="identity-id-card min-w-0 cursor-pointer"
                             role="button"
                             tabIndex={0}
                             aria-label={`编辑 ${identity.name || "身份"}`}
@@ -164,40 +163,34 @@ export function UserIdentitySettings() {
                                 }
                             }}
                         >
-                            <div className="min-w-0 flex flex-col gap-1">
-                                <span className="truncate text-[calc(14.5px*var(--app-text-scale,1))] font-medium leading-tight text-[var(--c-text-title)]">{identity.name || "未命名身份"}</span>
-                                <span className="menu-desc truncate">{identity.occupation || identity.bio || identity.gender || "未填写身份信息"}</span>
+                            <div className="identity-id-card__stripe" aria-hidden="true" />
+                            <div className="identity-id-card__actions">
+                                <button
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        setConfirmDeleteId(identity.id);
+                                    }}
+                                    className="identity-id-card__icon identity-id-card__icon--danger"
+                                    aria-label={`删除 ${identity.name || "身份"}`}
+                                >
+                                    <Trash2 size={14} />
+                                </button>
                             </div>
-                            <div className="flex items-end justify-between gap-2">
-                                {identity.avatarUrl ? (
-                                    <img src={identity.avatarUrl} alt={identity.name} className="h-9 w-9 rounded-full object-cover shrink-0" />
-                                ) : (
-                                    <div className="h-9 w-9 rounded-full bg-[var(--c-page-body-bg)] text-[var(--c-icon)] grid place-items-center shrink-0">
-                                        <User size={18} />
-                                    </div>
-                                )}
-                                <div className="flex gap-2 shrink-0 items-center">
-                                    <button
-                                        type="button"
-                                        onClick={(event) => {
-                                            event.stopPropagation();
-                                            setEditingId(identity.id);
-                                        }}
-                                        className="ui-link-btn opacity-40 hover:opacity-100"
-                                    >
-                                        <FileEdit size={16} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={(event) => {
-                                            event.stopPropagation();
-                                            setConfirmDeleteId(identity.id);
-                                        }}
-                                        className="ui-link-btn opacity-40 hover:opacity-100"
-                                        data-variant="danger"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                            <div className="identity-id-card__content">
+                                <div className="identity-id-card__avatar">
+                                    {identity.avatarUrl ? (
+                                        <img src={identity.avatarUrl} alt={identity.name} />
+                                    ) : (
+                                        <div>
+                                            <User size={18} />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="identity-id-card__details">
+                                    <div><span>★ NAME</span><strong>{identity.name || "未命名身份"}</strong></div>
+                                    <div><span>★ AGE</span><strong>{identity.age || "未知"}</strong></div>
+                                    <div><span>★ JOB</span><strong>{identity.occupation || "未填写"}</strong></div>
                                 </div>
                             </div>
                         </div>

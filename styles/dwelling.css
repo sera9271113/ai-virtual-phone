@@ -621,7 +621,14 @@
   padding: 14px 22px calc(22px + env(safe-area-inset-bottom, 0px));
   max-height: 72%;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   animation: dw2-sheet-in 0.28s ease both;
+}
+.dw2-sheet::-webkit-scrollbar,
+.dwelling-detail-html::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 @keyframes dw2-sheet-in { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 .dw2-grab {
@@ -995,7 +1002,13 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding: 12px 14px calc(18px + env(safe-area-inset-bottom, 0px));
+}
+
+.dwelling-detail-html iframe {
+  background: #f7f4ee;
 }
 
 /* Keep Chinese UI text as compact as the room description copy. */

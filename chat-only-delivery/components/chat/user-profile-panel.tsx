@@ -65,6 +65,7 @@ function ProfileSettingsIcon({ icon: Icon, color }: { icon: LucideIcon; color: s
 function ProfileSettingsSliderItem({
     icon,
     color,
+    hideIcon = false,
     label,
     desc,
     value,
@@ -76,6 +77,7 @@ function ProfileSettingsSliderItem({
 }: {
     icon: LucideIcon;
     color: string;
+    hideIcon?: boolean;
     label: string;
     desc?: string;
     value: number;
@@ -88,7 +90,7 @@ function ProfileSettingsSliderItem({
     return (
         <div className="menu-item profile-slider-item">
             <div className="profile-slider-header">
-                <ProfileSettingsIcon icon={icon} color={color} />
+                {!hideIcon && <ProfileSettingsIcon icon={icon} color={color} />}
                 <div className="menu-label-group">
                     <span className="menu-label">{label}</span>
                     {desc && <span className="menu-desc">{desc}</span>}
@@ -350,13 +352,12 @@ function FollowUpSettingsEditor({ onBack }: { onBack: () => void }) {
 
     return (
         <PageShell title="追发设置" onBack={onBack} className="absolute inset-0 z-[100]">
-            <div className="page-menu profile-settings-menu">
+            <div className="page-menu profile-settings-menu follow-up-settings-menu">
                 <p className="menu-group-desc mx-2">
                     延迟计算：焦虑值={config.anxietyThreshold} → {config.anxietyMaxDelay}秒，焦虑值=100 → {config.anxietyMinDelay}秒，中间线性插值。焦虑值&lt;{config.anxietyThreshold}时不追发。
                 </p>
-                <div className="menu-group">
+                <div className="menu-group follow-up-settings-card">
                     <div className="menu-item">
-                        <ProfileSettingsIcon icon={SlidersHorizontal} color={BINDING_ACCENTS.preset} />
                         <div className="menu-label-group">
                             <span className="menu-label">状态值字段名</span>
                             <span className="menu-desc">用于读取角色状态中的焦虑值</span>
@@ -372,6 +373,7 @@ function FollowUpSettingsEditor({ onBack }: { onBack: () => void }) {
                     <ProfileSettingsSliderItem
                         icon={Heart}
                         color={CONTENT_APP_ACCENTS.moments}
+                        hideIcon
                         label="焦虑阈值"
                         desc={`低于 ${config.anxietyThreshold} 时不触发追发`}
                         value={config.anxietyThreshold}
@@ -384,6 +386,7 @@ function FollowUpSettingsEditor({ onBack }: { onBack: () => void }) {
                     <ProfileSettingsSliderItem
                         icon={Clock}
                         color={CONTENT_APP_ACCENTS.calendar}
+                        hideIcon
                         label="最短等待"
                         desc="焦虑=100时使用"
                         value={config.anxietyMinDelay}
@@ -396,6 +399,7 @@ function FollowUpSettingsEditor({ onBack }: { onBack: () => void }) {
                     <ProfileSettingsSliderItem
                         icon={Clock}
                         color={BINDING_ACCENTS.voice}
+                        hideIcon
                         label="最长等待"
                         desc="焦虑=阈值时使用"
                         value={config.anxietyMaxDelay}
@@ -408,9 +412,8 @@ function FollowUpSettingsEditor({ onBack }: { onBack: () => void }) {
                 </div>
 
                 {/* Reset button */}
-                <div className="menu-group">
+                <div className="menu-group follow-up-settings-card">
                     <button className="menu-item" onClick={handleResetDefaults}>
-                        <ProfileSettingsIcon icon={RotateCcw} color={BINDING_ACCENTS.regex} />
                         <div className="menu-label-group"><span className="menu-label menu-label-danger">恢复默认</span></div>
                     </button>
                 </div>
