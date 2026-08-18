@@ -130,7 +130,7 @@ export function UserIdentitySettings() {
     if (!isLoaded) return null;
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="identity-settings-page flex flex-col gap-3">
 
             {identities.length === 0 ? (
                 <div className="ui-empty">

@@ -34,7 +34,8 @@ export function CharacterCard({
 }) {
   const color = character.cardColor?.trim() || FALLBACK_CARD_COLOR;
   const no = String(Math.max(1, Math.floor(number))).padStart(2, "0");
-  const tags = (character.tags ?? []).map(tag => tag.trim()).filter(Boolean).slice(0, 3);
+  const tags = (character.tags ?? []).map(tag => tag.trim()).filter(Boolean);
+  const firstTag = tags[0] || "";
 
   return (
     <div
@@ -77,8 +78,13 @@ export function CharacterCard({
           {character.name || "未命名"}
         </div>
         <div className="ccf-card-divider" aria-hidden="true" />
-        <div className="ccf-card-tags" aria-label="角色标签">
-          {tags.map(tag => <span key={tag}>{tag}</span>)}
+        <div className="ccf-card-meta-row" aria-label="角色标签和微信号">
+          <div className="ccf-card-meta-col">
+            <span className="ccf-card-meta-value">{firstTag}</span>
+          </div>
+          <div className="ccf-card-meta-col ccf-card-meta-col--right">
+            <span className="ccf-card-meta-value">{character.wechatID || "N/A"}</span>
+          </div>
         </div>
         <button
           type="button"

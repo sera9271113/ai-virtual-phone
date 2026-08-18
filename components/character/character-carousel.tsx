@@ -3,7 +3,7 @@
 // 角色轮播：横向 scroll-snap 平铺滑动，类似书店 Library 风格。
 // 卡片一张挨一张，不做缩放/旋转/层叠。
 
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { Character } from "@/lib/character-types";
 import { CharacterCard } from "./character-card";
 
@@ -27,6 +27,8 @@ export function CharacterCarousel({
   );
   const numberById = new Map(ordered.map((c, i) => [c.id, i + 1]));
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRafRef = useRef<number | null>(null);
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(focusCharacterId ?? ordered[0]?.id ?? null);
 
   // 首次挂载（含从编辑/详情页返回后的重新挂载）→ 优先回到用户刚看过的那张卡；
   // 世界切换或新增卡片 → 退回旧逻辑，滚动到最近更新的角色
@@ -73,6 +75,7 @@ export function CharacterCarousel({
     if (!container) return;
     const card = container.children[targetIdx] as HTMLElement | undefined;
     if (card) {
+      setSelectedCharacterId(ordered[targetIdx]?.id ?? null);
       // 注意：这里不能用 "auto" —— 按规范它表示「交给 CSS 的
       // scroll-behavior 决定」，而 .ccf-carousel-scroll 设了
       // scroll-behavior: smooth，"auto" 会被解析成平滑滚动，
@@ -87,6 +90,32 @@ export function CharacterCarousel({
     }
   }, [worldId, characters.length, ordered, focusCharacterId]);
 
+  function updateSelectedFromScroll() {
+    const container = scrollRef.current;
+    if (!container) return;
+    const containerCenter = container.scrollLeft + container.clientWidth / 2;
+    let nearestIdx = 0;
+    let nearestDistance = Infinity;
+    Array.from(container.children).forEach((child, idx) => {
+      const item = child as HTMLElement;
+      const itemCenter = item.offsetLeft + item.offsetWidth / 2;
+      const distance = Math.abs(itemCenter - containerCenter);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIdx = idx;
+      }
+    });
+    setSelectedCharacterId(ordered[nearestIdx]?.id ?? null);
+  }
+
+  function handleScroll() {
+    if (scrollRafRef.current !== null) return;
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      updateSelectedFromScroll();
+    });
+  }
+
   if (ordered.length === 0) {
     return (
       <div className="ccf-carousel">
@@ -97,13 +126,15 @@ export function CharacterCarousel({
 
   return (
     <div className="ccf-carousel">
-      <div className="ccf-carousel-scroll" ref={scrollRef}>
+      <div className="ccf-carousel-scroll" ref={scrollRef} onScroll={handleScroll}>
         {ordered.map((char, i) => (
           <div key={char.id} className="ccf-carousel-item">
             <CharacterCard
               character={char}
               number={numberById.get(char.id) ?? i + 1}
+              selected={selectedCharacterId === char.id}
               onSelect={() => {
+                setSelectedCharacterId(char.id);
                 const card = scrollRef.current?.children[i] as HTMLElement | undefined;
                 card?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
               }}

@@ -37,7 +37,7 @@ import { RelationLinkDialog, RelationPairSheet } from "@/components/character/re
 import { loadMomentsConfig, saveMomentsConfig } from "@/lib/moments-storage";
 import { PageShell } from "@/components/ui/page-shell";
 import { ConfirmDialog } from "@/components/ui/modal";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, X } from "lucide-react";
 import { notifyMascotPageContext } from "@/lib/mascot-events";
 import { kvGet, kvSet } from "@/lib/kv-db";
 import { normalizeTimeZone } from "@/lib/character-time";
@@ -410,7 +410,7 @@ function CharListView({
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
           </button>
         }
-        className="[&_.page-body]:pb-0 [&_.page-header]:bg-white"
+        className="character-page-shell [&_.page-body]:pb-0 [&_.page-header]:bg-white"
         footer={
           <input
             ref={fileRef} type="file" accept=".json,.png,image/png,application/json" className="hidden"
@@ -1334,34 +1334,39 @@ function CharArchiveView({
   const viewFrame = (
     <div className="char-id-card">
       <div className="char-id-toolbar">
-        <button type="button" className="char-id-icon-btn" onClick={onEdit} aria-label="编辑角色">
-          <IconEdit />
+        <button type="button" className="char-id-icon-btn" onClick={onBack} aria-label="关闭">
+          <X size={16} />
         </button>
-        <div className="char-id-actions-wrap">
-          <button
-            type="button"
-            className="char-id-icon-btn"
-            onClick={() => setShowIdActions(value => !value)}
-            aria-label="更多操作"
-            aria-expanded={showIdActions}
-          >
-            <IconGridDots />
+        <div className="char-id-toolbar-left">
+          <button type="button" className="char-id-icon-btn" onClick={onEdit} aria-label="编辑角色">
+            <IconEdit />
           </button>
-          {showIdActions && (
-            <div className="char-id-actions-menu" role="menu">
-              <button type="button" onClick={() => { setShowIdActions(false); void onExportPng(); }}>导出图片</button>
-              <button type="button" onClick={() => { setShowIdActions(false); onExportJson(); }}>导出 JSON</button>
-              {confirmDelete ? (
-                <div className="char-id-delete-confirm">
-                  <span>确认删除？</span>
-                  <button type="button" onClick={onDelete}>确认</button>
-                  <button type="button" onClick={() => setConfirmDelete(false)}>取消</button>
-                </div>
-              ) : (
-                <button type="button" className="is-danger" onClick={() => setConfirmDelete(true)}>删除角色</button>
-              )}
-            </div>
-          )}
+          <div className="char-id-actions-wrap">
+            <button
+              type="button"
+              className="char-id-icon-btn"
+              onClick={() => setShowIdActions(value => !value)}
+              aria-label="更多操作"
+              aria-expanded={showIdActions}
+            >
+              <IconGridDots />
+            </button>
+            {showIdActions && (
+              <div className="char-id-actions-menu" role="menu">
+                <button type="button" onClick={() => { setShowIdActions(false); void onExportPng(); }}>导出图片</button>
+                <button type="button" onClick={() => { setShowIdActions(false); onExportJson(); }}>导出 JSON</button>
+                {confirmDelete ? (
+                  <div className="char-id-delete-confirm">
+                    <span>确认删除？</span>
+                    <button type="button" onClick={onDelete}>确认</button>
+                    <button type="button" onClick={() => setConfirmDelete(false)}>取消</button>
+                  </div>
+                ) : (
+                  <button type="button" className="is-danger" onClick={() => setConfirmDelete(true)}>删除角色</button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <div className="char-id-avatar">

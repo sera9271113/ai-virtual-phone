@@ -302,7 +302,13 @@
   cursor: pointer;
   padding: 0;
 }
-.dw-room-drawer-list { flex: 1; overflow-y: auto; padding: 10px 12px; }
+.dw-room-drawer-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding: 10px 12px;
+}
 .dw-room-drawer-item {
   width: 100%;
   display: grid;
@@ -621,6 +627,8 @@
   padding: 14px 22px calc(22px + env(safe-area-inset-bottom, 0px));
   max-height: 72%;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   scrollbar-width: none;
   -ms-overflow-style: none;
   animation: dw2-sheet-in 0.28s ease both;
@@ -789,6 +797,8 @@
 .dw-room {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding: 0 16px 24px;
   min-height: 0;
 }
@@ -1002,6 +1012,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 12px 14px calc(18px + env(safe-area-inset-bottom, 0px));

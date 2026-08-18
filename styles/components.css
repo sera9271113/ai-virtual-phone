@@ -825,8 +825,10 @@
 
 .identity-card-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 145px));
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  width: calc(100% - 12px);
+  max-width: 336px;
   justify-content: center;
 }
 
@@ -834,21 +836,21 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  width: 145px;
-  min-height: 218px;
+  width: 100%;
+  min-height: 240px;
   aspect-ratio: 3 / 3.8;
   padding: 11px 10px 10px;
-  color: #626262;
-  background-color: #f7f7f7;
-  border: 1px solid rgba(110, 110, 110, .22);
-  box-shadow: 4px 5px 0 rgba(128, 128, 128, .16), 0 8px 18px rgba(35, 35, 35, .09);
+  color: #7a7a7a;
+  background-color: #fbfbfb;
+  border: 1px solid rgba(128, 128, 128, .13);
+  box-shadow: 2px 3px 0 rgba(142, 142, 142, .12), 0 5px 11px rgba(35, 35, 35, .06);
   transition: transform .18s ease, box-shadow .18s ease;
 }
 
 .identity-id-card:hover,
 .identity-id-card:focus-visible {
   transform: translateY(-2px) rotate(-.3deg);
-  box-shadow: 5px 8px 0 rgba(128, 128, 128, .22), 0 12px 22px rgba(35, 35, 35, .13);
+  box-shadow: 5px 8px 0 rgba(148, 148, 148, .13), 0 12px 22px rgba(35, 35, 35, .08);
   outline: none;
 }
 
@@ -859,11 +861,11 @@
   right: 0;
   bottom: 0;
   width: 15px;
-  background-color: #e2e2e2;
-  background-image: radial-gradient(circle, rgba(150, 150, 150, .28) 1px, transparent 1.5px);
+  background-color: #eeeeee;
+  background-image: radial-gradient(circle, rgba(164, 164, 164, .16) 1px, transparent 1.5px);
   background-position: 3px 0;
   background-size: 6px 6px;
-  opacity: .8;
+  opacity: .62;
   clip-path: polygon(0 0, 100% 0, 100% 68%, 34% 61%, 0 56%);
 }
 
@@ -876,7 +878,7 @@
 }
 
 .identity-id-card__stars {
-  color: #a6a7aa;
+  color: #bebfc2;
   font-size: 11px;
   letter-spacing: 1px;
   line-height: 1;
@@ -886,7 +888,7 @@
   position: absolute;
   top: 12px;
   right: 14px;
-  color: #88898d;
+  color: #aaaab0;
   font-size: 7px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -905,13 +907,13 @@
   width: 18px;
   height: 18px;
   place-items: center;
-  color: #b4b4b4;
-  background: rgba(255, 255, 255, .78);
-  border: 1px solid rgba(145, 145, 145, .10);
+  color: #c8c8c8;
+  background: rgba(255, 255, 255, .86);
+  border: 1px solid rgba(160, 160, 160, .08);
   border-radius: 50%;
 }
 
-.identity-id-card__icon--danger:hover { color: #9f9f9f; }
+.identity-id-card__icon--danger:hover { color: #b2b2b2; }
 
 .identity-id-card__avatar {
   display: grid;
@@ -920,10 +922,10 @@
   margin: 0 auto 12px;
   place-items: center;
   overflow: hidden;
-  color: #a0a0a0;
-  background: rgba(190, 190, 190, .25);
-  border: 5px solid rgba(190, 190, 190, .55);
-  box-shadow: 0 0 0 1px rgba(110, 110, 110, .16);
+  color: #b9b9b9;
+  background: rgba(205, 205, 205, .18);
+  border: 5px solid rgba(205, 205, 205, .36);
+  box-shadow: 0 0 0 1px rgba(130, 130, 130, .09);
 }
 
 .identity-id-card__avatar img {
@@ -958,7 +960,7 @@
 }
 
 .identity-id-card__details span {
-  color: #85878d;
+  color: #aaaab0;
   font-size: 7px;
   font-weight: 700;
   white-space: nowrap;
@@ -967,19 +969,19 @@
 .identity-id-card__details strong {
   display: block;
   overflow: hidden;
-  color: #5d5e63;
+  color: #77787d;
   font-size: 9px;
   font-weight: 600;
   line-height: 1.5;
   padding-bottom: 2px;
-  border-bottom: 1px solid rgba(125, 125, 125, .38);
+  border-bottom: 1px solid rgba(150, 150, 150, .22);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .identity-id-card__footer {
   margin-top: 8px;
-  color: #85878d;
+  color: #aaaab0;
   font-size: 8px;
   font-style: italic;
   text-align: right;

@@ -169,9 +169,9 @@ function HtmlPageSegment({ html, onOptionSelect, htmlPageMode }: HtmlPageProps) 
         // 内容、能缩回去；MutationObserver + 一堆事件捕捉任何变化(自定义按钮也行)；
         // body 高=内容高，父层改 iframe 高不反馈到内容 → 测出不变 → 天然不循环。
         const overflowRule = contained
-            ? "overflow:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;"
+            ? "overflow:hidden!important;overscroll-behavior:contain;"
             : "overflow:hidden!important;";
-        const bridge = `<style>html,body{${overflowRule}min-height:0!important}::-webkit-scrollbar{width:0;height:0}*{scrollbar-width:none;-ms-overflow-style:none}</style><script>(function(){function ensureReadableFallback(){var d=document.documentElement;var b=document.body;if(!b)return;var db=getComputedStyle(d).backgroundColor;var bb=getComputedStyle(b).backgroundColor;if((!db||db==='transparent'||db==='rgba(0, 0, 0, 0)')&&(!bb||bb==='transparent'||bb==='rgba(0, 0, 0, 0)')){b.style.backgroundColor='#f7f4ee';if(!b.style.color)b.style.color='#252525'}}function measure(){var d=document.documentElement;var b=document.body;if(!b)return 0;var br=b.getBoundingClientRect();var h=Math.max(br.height,b.scrollHeight||0,d?d.scrollHeight||0:0);for(var i=0;i<b.children.length;i++){var r=b.children[i].getBoundingClientRect();if(r.width||r.height)h=Math.max(h,r.bottom-br.top)}return Math.ceil(h)}function send(){ensureReadableFallback();window.parent.postMessage({type:"_rhr",h:measure()},"*")}function schedule(){requestAnimationFrame(function(){send();requestAnimationFrame(send)})}window.addEventListener("load",schedule);window.addEventListener("resize",schedule);document.addEventListener("click",function(e){var t=e.target&&e.target.closest&&e.target.closest("[data-action]");if(t){var a=t.getAttribute("data-action");if(a){e.preventDefault();e.stopPropagation();window.parent.postMessage({type:"_rhr_opt",text:a},"*")}}schedule()},true);document.addEventListener("toggle",schedule,true);document.addEventListener("transitionend",schedule,true);document.addEventListener("animationend",schedule,true);if(window.MutationObserver)new MutationObserver(schedule).observe(document.documentElement,{attributes:true,childList:true,subtree:true,characterData:true});if(window.ResizeObserver){var ro=new ResizeObserver(schedule);ro.observe(document.documentElement);if(document.body)ro.observe(document.body)}setTimeout(send,80);setTimeout(send,500);setTimeout(send,1600)})();<\/script>`;
+        const bridge = `<style>html,body{${overflowRule}min-height:0!important}::-webkit-scrollbar{width:0;height:0}*{scrollbar-width:none;-ms-overflow-style:none}</style><script>(function(){function ensureReadableFallback(){var d=document.documentElement;var b=document.body;if(!b)return;var db=getComputedStyle(d).backgroundColor;var bb=getComputedStyle(b).backgroundColor;if((!db||db==='transparent'||db==='rgba(0, 0, 0, 0)')&&(!bb||bb==='transparent'||bb==='rgba(0, 0, 0, 0)')){b.style.backgroundColor='#f7f4ee';if(!b.style.color)b.style.color='#252525'}}function measure(){var d=document.documentElement;var b=document.body;if(!b)return 0;var br=b.getBoundingClientRect();var h=Math.max(br.height,b.scrollHeight||0,d?d.scrollHeight||0:0);for(var i=0;i<b.children.length;i++){var r=b.children[i].getBoundingClientRect();if(r.width||r.height)h=Math.max(h,r.bottom-br.top)}return Math.ceil(h)}function scrollByDelta(dy){var t=document.scrollingElement||document.documentElement||document.body;if(!t)return;var max=t.scrollHeight-t.clientHeight;if(max<=0)return;var next=t.scrollTop+dy;if(next<0)next=0;if(next>max)next=max;t.scrollTop=next}function relayScroll(dy){window.parent.postMessage({type:"_rhr_scroll",dy:dy},"*")}function send(){ensureReadableFallback();window.parent.postMessage({type:"_rhr",h:measure()},"*")}function schedule(){requestAnimationFrame(function(){send();requestAnimationFrame(send)})}window.addEventListener("load",schedule);window.addEventListener("resize",schedule);document.addEventListener("wheel",function(e){if(${contained ? "true" : "false"}){scrollByDelta(e.deltaY);relayScroll(e.deltaY);e.preventDefault();e.stopPropagation()}},{passive:false});document.addEventListener("touchmove",function(e){if(${contained ? "true" : "false"}){var t=e.touches&&e.touches[0];if(t){var last=window.__rhr_lastY||t.clientY;var dy=last-t.clientY;scrollByDelta(dy);relayScroll(dy);window.__rhr_lastY=t.clientY}e.preventDefault();e.stopPropagation()}},{passive:false});document.addEventListener("touchstart",function(e){var t=e.touches&&e.touches[0];window.__rhr_lastY=t?t.clientY:0},{passive:true});document.addEventListener("click",function(e){var t=e.target&&e.target.closest&&e.target.closest("[data-action]");if(t){var a=t.getAttribute("data-action");if(a){e.preventDefault();e.stopPropagation();window.parent.postMessage({type:"_rhr_opt",text:a},"*")}}schedule()},true);document.addEventListener("toggle",schedule,true);document.addEventListener("transitionend",schedule,true);document.addEventListener("animationend",schedule,true);if(window.MutationObserver)new MutationObserver(schedule).observe(document.documentElement,{attributes:true,childList:true,subtree:true,characterData:true});if(window.ResizeObserver){var ro=new ResizeObserver(schedule);ro.observe(document.documentElement);if(document.body)ro.observe(document.body)}setTimeout(send,80);setTimeout(send,500);setTimeout(send,1600)})();<\/script>`;
         let h = html;
         // Convert basic markdown inside hidden data divs
         h = h.replace(
@@ -193,10 +193,14 @@ function HtmlPageSegment({ html, onOptionSelect, htmlPageMode }: HtmlPageProps) 
             if (!e.data || typeof e.data !== "object") return;
             if (iframeRef.current && e.source !== iframeRef.current.contentWindow) return;
             if (e.data.type === "_rhr" && typeof e.data.h === "number") {
-                if (!contained) setHeight(Math.max(e.data.h, 50));
+                setHeight(Math.max(e.data.h, 50));
             }
             if (e.data.type === "_rhr_opt" && typeof e.data.text === "string") {
                 onOptionSelect?.(e.data.text);
+            }
+            if (e.data.type === "_rhr_scroll" && typeof e.data.dy === "number") {
+                const scrollParent = iframeRef.current?.closest(".dwelling-detail-html");
+                if (scrollParent) scrollParent.scrollTop += e.data.dy;
             }
         };
         window.addEventListener("message", handler);
@@ -210,7 +214,7 @@ function HtmlPageSegment({ html, onOptionSelect, htmlPageMode }: HtmlPageProps) 
             title="HTML content"
             style={{
                 width: "100%",
-                height: contained ? "min(68dvh, 560px)" : height,
+                height,
                 border: "none",
                 display: "block",
                 borderRadius: 12,
