@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useState, useEffect } from "react";
-import { type LucideIcon, X, Check } from "lucide-react";
+import { type LucideIcon, X, Check, ChevronLeft } from "lucide-react";
 
 /* ── Confirm Dialog (center) ── */
 export type ConfirmDialogProps = {
@@ -52,6 +52,9 @@ export type ContentDialogProps = {
   title: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  dialogClassName?: string;
+  backLabel?: string;
+  onBack?: () => void;
   onConfirm: () => void;
   onCancel: () => void;
   children: ReactNode;
@@ -61,15 +64,25 @@ export function ContentDialog({
   title,
   confirmLabel = "\u4FDD\u5B58",
   cancelLabel = "\u53D6\u6D88",
+  dialogClassName,
+  backLabel,
+  onBack,
   onConfirm,
   onCancel,
   children,
 }: ContentDialogProps) {
   return (
     <div className="modal-overlay" data-ui="modal" onClick={onCancel}>
-      <div className="modal-dialog" data-ui="modal-dialog" onClick={(e) => e.stopPropagation()}>
+      <div className={`modal-dialog ${dialogClassName ?? ""}`} data-ui="modal-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header" data-ui="modal-header">
-          <h3 className="modal-title">{title}</h3>
+          {onBack ? (
+            <div className="modal-header-with-back">
+              <button type="button" className="modal-back-btn" aria-label={backLabel ?? "返回"} title={backLabel ?? "返回"} onClick={onBack}>
+                <ChevronLeft size={20} />
+              </button>
+              <h3 className="modal-title">{title}</h3>
+            </div>
+          ) : <h3 className="modal-title">{title}</h3>}
         </div>
         <div className="modal-body" data-ui="modal-body" style={{ textAlign: "left", width: "100%" }}>
           {children}

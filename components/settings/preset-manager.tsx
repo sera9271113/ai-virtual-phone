@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useContext, useCallback, useMemo } from "react";
-import { Plus, SquarePlus, Upload, Download, Trash2, RotateCcw, ChevronLeft, ChevronRight, GripVertical, MessageSquare, AlertCircle, Maximize2, Copy, FolderOpen } from "lucide-react";
+import { Plus, SquarePlus, Upload, Download, Trash2, RotateCcw, ChevronLeft, ChevronRight, GripVertical, MessageSquare, AlertCircle, Maximize2, Copy, FolderOpen, ClipboardList, Import } from "lucide-react";
 import {
     loadPresets,
     savePresets,
@@ -22,9 +22,15 @@ import { buildCustomAppTagGroups, findTagGroupForTags, flattenTagGroups } from "
 import { CUSTOM_APPS_UPDATED_EVENT, loadInstalledCustomApps } from "@/lib/custom-app-storage";
 import type { InstalledCustomApp } from "@/lib/custom-app-types";
 import { SettingsContext } from "../phone-settings-app";
-import { ConfirmDialog, TextExpandModal } from "@/components/ui/modal";
+import { ConfirmDialog, ContentDialog, TextExpandModal } from "@/components/ui/modal";
 import { notifyMascotPageContext } from "@/lib/mascot-events";
 import { useTouchSort } from "@/lib/use-touch-sort";
+import {
+    clearPresetTransferPackage,
+    loadPresetTransferPackage,
+    savePresetTransferPackage,
+    type PresetTransferPackage,
+} from "@/lib/preset-transfer-storage";
 
 // ── Tag helpers for backward compat (tags[] > featureTag + followUpOnly) ──
 function getPromptTags(p: Prompt): string[] {
@@ -56,6 +62,14 @@ function setPromptTags(tags: string[]): Partial<Prompt> {
         featureTag: undefined,
         followUpOnly: undefined,
     };
+}
+
+function TransferStationIcon({ size = 16 }: { size?: number }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M21 6a1 1 0 0 1-1 1H10a1 1 0 1 1 0-2h10a1 1 0 0 1 1 1M21 12a1 1 0 0 1-1 1H10a1 1 0 0 1 0-2h10a1 1 0 0 1 1 1M21 18a1 1 0 0 1-1 1H10a1 1 0 0 1 0-2h10a1 1 0 0 1 1 1M7 5.995v.02c0 1.099-.895 1.99-2 1.99s-2-.891-2-1.99v-.02c0-1.099.895-1.99 2-1.99s2 .891 2 1.99M7 11.995v.02c0 1.099-.895 1.99-2 1.99s-2-.891-2-1.99v-.02c0-1.099.895-1.99 2-1.99s2 .891 2 1.99M7 17.995v.02c0 1.099-.895 1.99-2 1.99s-2-.891-2-1.99v-.02c0-1.099.895-1.99 2-1.99s2 .891 2 1.99" />
+        </svg>
+    );
 }
 
 const MASCOT_PRESET_STORAGE_TOOL_NAMES = new Set([
@@ -99,6 +113,11 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
     const [confirmResetId, setConfirmResetId] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [confirmDeleteEntry, setConfirmDeleteEntry] = useState<string | null>(null);
+    const [transferMode, setTransferMode] = useState<"save" | "library" | null>(null);
+    const [selectedPromptIds, setSelectedPromptIds] = useState<string[]>([]);
+    const [transferPackage, setTransferPackage] = useState<PresetTransferPackage | null>(null);
+    const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
+    const [transferSearch, setTransferSearch] = useState("");
     const [isLoaded, setIsLoaded] = useState(false);
 
     const [expandTarget, setExpandTarget] = useState<{ identifier: string; field: string } | null>(null);
@@ -117,6 +136,7 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
         }
         setCustomApps(loadInstalledCustomApps());
         setIsLoaded(true);
+        setTransferPackage(loadPresetTransferPackage());
     }, []);
 
     useEffect(() => {
@@ -437,6 +457,105 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
         setViewMode("list");
     };
 
+    const openTransferDialog = useCallback(() => {
+        const stored = loadPresetTransferPackage();
+        setTransferPackage(stored);
+        setSelectedPromptIds([]);
+        setTransferSearch("");
+        setTransferMode("save");
+    }, []);
+
+    const getDisplayedPrompts = (preset: PresetConfig): Prompt[] => {
+        const ordered = preset.prompt_order && preset.prompt_order.length > 0
+            ? preset.prompt_order.map(entry => preset.prompts.find(prompt => prompt.identifier === entry.identifier)).filter((prompt): prompt is Prompt => !!prompt)
+            : preset.prompts || [];
+        const orderedIds = new Set(ordered.map(prompt => prompt.identifier));
+        return [...ordered, ...(preset.prompts || []).filter(prompt => !orderedIds.has(prompt.identifier))];
+    };
+
+    const saveSelectedPrompts = () => {
+        if (!editingId) return;
+        const source = presets.find(preset => preset.id === editingId);
+        if (!source || selectedPromptIds.length === 0) return;
+        const selected = new Set(selectedPromptIds);
+        const displayed = getDisplayedPrompts(source);
+        const items = displayed
+            .filter(prompt => selected.has(prompt.identifier))
+            .map(prompt => ({
+                prompt: structuredClone(prompt),
+                orderEntry: {
+                    identifier: prompt.identifier,
+                    enabled: source.prompt_order?.find(entry => entry.identifier === prompt.identifier)?.enabled ?? prompt.enabled,
+                },
+            }));
+        const stored = transferPackage ?? loadPresetTransferPackage();
+        const existingItems = stored?.items ?? [];
+        const existingIds = new Set(existingItems.map(item => item.prompt.identifier));
+        const nextPackage: PresetTransferPackage = {
+            sourcePresetId: stored?.sourcePresetId ?? source.id,
+            sourcePresetName: stored?.sourcePresetName ?? source.name,
+            savedAt: Date.now(),
+            items: [...existingItems, ...items.filter(item => !existingIds.has(item.prompt.identifier))],
+        };
+        savePresetTransferPackage(nextPackage);
+        setTransferPackage(nextPackage);
+        setSelectedPromptIds(nextPackage.items.map(item => item.prompt.identifier));
+        setTransferSearch("");
+        setTransferMode("save");
+    };
+
+    const removeStoredPrompt = (identifier: string) => {
+        if (!transferPackage) return;
+        const items = transferPackage.items.filter(item => item.prompt.identifier !== identifier);
+        setSelectedPromptIds(current => current.filter(id => id !== identifier));
+        if (items.length === 0) {
+            clearPresetTransferPackage();
+            setTransferPackage(null);
+            setTransferMode(null);
+            return;
+        }
+        const nextPackage = { ...transferPackage, items };
+        savePresetTransferPackage(nextPackage);
+        setTransferPackage(nextPackage);
+    };
+
+    const importStoredPrompts = () => {
+        if (!editingId || !transferPackage) return;
+        const target = presets.find(preset => preset.id === editingId);
+        if (!target) return;
+        const selected = new Set(selectedPromptIds);
+        const selectedItems = transferPackage.items.filter(item => selected.has(item.prompt.identifier));
+        if (selectedItems.length === 0) return;
+        const existingIds = new Set(target.prompts.map(prompt => prompt.identifier));
+        const conflicts = selectedItems.filter(item => existingIds.has(item.prompt.identifier));
+        if (conflicts.length > 0) {
+            setTransferTargetId("conflict");
+            return;
+        }
+        const importedPrompts = selectedItems.map(item => structuredClone(item.prompt));
+        const importedOrder = selectedItems.map(item => ({ ...item.orderEntry }));
+        const next = presets.map(preset => preset.id === target.id
+            ? {
+                ...preset,
+                prompts: [...preset.prompts, ...importedPrompts],
+                prompt_order: [...(preset.prompt_order || []), ...importedOrder],
+                updatedAt: Date.now(),
+            }
+            : preset);
+        persist(next);
+        const remainingItems = transferPackage.items.filter(item => !selected.has(item.prompt.identifier));
+        if (remainingItems.length > 0) {
+            const remainingPackage = { ...transferPackage, items: remainingItems };
+            savePresetTransferPackage(remainingPackage);
+            setTransferPackage(remainingPackage);
+        } else {
+            clearPresetTransferPackage();
+            setTransferPackage(null);
+        }
+        setTransferMode(null);
+        setTransferTargetId(null);
+    };
+
     const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -530,7 +649,7 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-3">
+                        <div className="preset-transfer-content flex flex-col gap-3">
                             {presets.map(preset => (
                                 <div
                                     key={preset.id}
@@ -577,6 +696,15 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
                                 <div className="flex items-center justify-between gap-3 mx-2">
                                     <h2 className="settings-menu-section-title">Preset Info</h2>
                                     <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={openTransferDialog}
+                                            aria-label={transferPackage ? "导入待移动条目" : "保存条目"}
+                                            title={transferPackage ? "导入待移动条目" : "保存条目"}
+                                            className="ui-link-btn opacity-40 hover:opacity-100"
+                                        >
+                                            <ClipboardList size={16} strokeWidth={2} />
+                                        </button>
                                         <button
                                             type="button"
                                             onClick={() => duplicatePreset(preset)}
@@ -1049,6 +1177,185 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
                         setConfirmDeleteEntry(null);
                     }}
                     onCancel={() => setConfirmDeleteEntry(null)}
+                />
+            )}
+
+            {transferMode === "save" && editingId && (() => {
+                const source = presets.find(preset => preset.id === editingId);
+                if (!source) return null;
+                const displayed = getDisplayedPrompts(source);
+                const allSelected = displayed.length > 0 && selectedPromptIds.length === displayed.length;
+                const query = transferSearch.trim().toLowerCase();
+                const filtered = displayed.filter(prompt => `${prompt.name} ${prompt.identifier} ${prompt.role}`.toLowerCase().includes(query));
+                return (
+                    <ContentDialog
+                        title={`${source.name || "当前预设"} (${displayed.length})`}
+                        dialogClassName="preset-transfer-dialog"
+                        confirmLabel={selectedPromptIds.length > 0 ? `保存 ${selectedPromptIds.length} 项` : "选择要保存的条目"}
+                        onConfirm={saveSelectedPrompts}
+                        onCancel={() => setTransferMode(null)}
+                    >
+                        <div className="preset-transfer-content flex flex-col gap-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <span className="menu-desc">从“{source.name}”选择要转移的条目</span>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        className="ui-link-btn whitespace-nowrap"
+                                        onClick={() => {
+                                            setSelectedPromptIds(transferPackage?.items.map(item => item.prompt.identifier) ?? []);
+                                            setTransferSearch("");
+                                            setTransferMode("library");
+                                        }}
+                                    >
+                                        <TransferStationIcon size={16} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="ui-link-btn whitespace-nowrap"
+                                        onClick={() => setSelectedPromptIds(allSelected ? [] : displayed.map(prompt => prompt.identifier))}
+                                    >
+                                        {allSelected ? "清空选择" : "全选"}
+                                    </button>
+                                </div>
+                            </div>
+                            <input
+                                type="search"
+                                value={transferSearch}
+                                onChange={(event) => setTransferSearch(event.target.value)}
+                                placeholder="搜索条目..."
+                                className="ui-input preset-transfer-search"
+                            />
+                            <div className="preset-transfer-list flex max-h-[min(50vh,380px)] flex-col overflow-y-auto px-2">
+                                {filtered.map(prompt => (
+                                    <label key={prompt.identifier} className="preset-transfer-row flex cursor-pointer items-center gap-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedPromptIds.includes(prompt.identifier)}
+                                            onChange={(event) => setSelectedPromptIds(current => event.target.checked
+                                                ? [...current, prompt.identifier]
+                                                : current.filter(id => id !== prompt.identifier))}
+                                            className="h-4 w-4 shrink-0"
+                                        />
+                                        <span className="min-w-0 flex-1">
+                                            <span className="menu-label block truncate">{prompt.name || "未命名提示词"}</span>
+                                            <span className="menu-desc block truncate">{prompt.marker ? "Marker" : `${prompt.role} · ${getPromptTagsInlineLabel(prompt)}`}</span>
+                                        </span>
+                                    </label>
+                                ))}
+                                {displayed.length === 0 && <span className="menu-desc p-3 text-center">当前预设没有可保存的条目。</span>}
+                                {displayed.length > 0 && filtered.length === 0 && <span className="menu-desc p-3 text-center">没有匹配的条目。</span>}
+                            </div>
+                        </div>
+                    </ContentDialog>
+                );
+            })()}
+
+            {transferMode === "library" && editingId && (() => {
+                const target = presets.find(preset => preset.id === editingId);
+                if (!target) return null;
+                const items = transferPackage?.items ?? [];
+                const query = transferSearch.trim().toLowerCase();
+                const filtered = items.filter(item => `${item.prompt.name} ${item.prompt.identifier} ${item.prompt.role}`.toLowerCase().includes(query));
+                const allSelected = items.length > 0 && selectedPromptIds.length === items.length;
+                const selected = new Set(selectedPromptIds);
+                const conflicts = items.filter(item => selected.has(item.prompt.identifier) && target.prompts.some(prompt => prompt.identifier === item.prompt.identifier));
+                return (
+                    <ContentDialog
+                        title={`条目中转站 (${items.length})`}
+                        dialogClassName="preset-transfer-dialog"
+                        backLabel="返回选择条目"
+                        onBack={() => {
+                            setSelectedPromptIds([]);
+                            setTransferSearch("");
+                            setTransferMode("save");
+                        }}
+                        confirmLabel={items.length === 0 ? "" : conflicts.length > 0 ? "存在冲突" : selectedPromptIds.length > 0 ? `导入 ${selectedPromptIds.length} 项` : "选择条目"}
+                        onConfirm={importStoredPrompts}
+                        onCancel={() => setTransferMode(null)}
+                    >
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <span className="menu-desc">来源：{transferPackage?.sourcePresetName ?? "本地中转站"} → {target.name}</span>
+                                <button
+                                    type="button"
+                                    className="ui-link-btn whitespace-nowrap"
+                                    onClick={() => setSelectedPromptIds(allSelected ? [] : items.map(item => item.prompt.identifier))}
+                                >
+                                    {allSelected ? "清空选择" : "全选"}
+                                </button>
+                            </div>
+                            <input
+                                type="search"
+                                value={transferSearch}
+                                onChange={(event) => setTransferSearch(event.target.value)}
+                                placeholder="搜索条目..."
+                                className="ui-input preset-transfer-search"
+                            />
+                            <div className="preset-transfer-list flex max-h-[min(50vh,380px)] flex-col overflow-y-auto px-2">
+                                {filtered.map(item => (
+                                    <div key={item.prompt.identifier} className="preset-transfer-row flex items-center gap-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedPromptIds.includes(item.prompt.identifier)}
+                                            onChange={(event) => setSelectedPromptIds(current => event.target.checked
+                                                ? [...current, item.prompt.identifier]
+                                                : current.filter(id => id !== item.prompt.identifier))}
+                                            className="h-4 w-4 shrink-0"
+                                        />
+                                        <span className="min-w-0 flex-1">
+                                            <span className="menu-label block truncate">{item.prompt.name || "未命名提示词"}</span>
+                                            <span className="menu-desc block truncate">{item.prompt.marker ? "Marker" : `${item.prompt.role} · ${getPromptTagsInlineLabel(item.prompt)}`}</span>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className="grid h-8 w-8 shrink-0 place-items-center text-[var(--c-text-muted)] active:opacity-50"
+                                            aria-label={`删除 ${item.prompt.name || "条目"}`}
+                                            title="从中转站删除"
+                                            onClick={() => removeStoredPrompt(item.prompt.identifier)}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {filtered.length === 0 && <span className="menu-desc p-3 text-center">没有匹配的条目。</span>}
+                            </div>
+                            {conflicts.length > 0 && (
+                                <div className="preset-transfer-conflict p-3">
+                                    <span className="menu-label block">无法导入：存在 identifier 冲突</span>
+                                    <span className="menu-desc block">{conflicts.map(item => item.prompt.name || item.prompt.identifier).join("、")}</span>
+                                </div>
+                            )}
+                            <div className="preset-transfer-actions">
+                                <button
+                                    type="button"
+                                    className="ui-btn ui-btn-soft-danger preset-transfer-action"
+                                    onClick={() => {
+                                        clearPresetTransferPackage();
+                                        setTransferPackage(null);
+                                        setSelectedPromptIds([]);
+                                        setTransferSearch("");
+                                    }}
+                                >
+                                    <Trash2 size={14} /> 清空中转站
+                                </button>
+                            </div>
+                            {items.length === 0 && <span className="menu-desc text-center">中转库暂无已保存条目。</span>}
+                        </div>
+                    </ContentDialog>
+                );
+            })()}
+
+            {transferTargetId === "conflict" && (
+                <ConfirmDialog
+                    title="无法导入"
+                    message="目标预设中已有相同 identifier 的条目。请先处理重复条目，待移动内容仍会保留。"
+                    icon={AlertCircle}
+                    variant="danger"
+                    confirmLabel="知道了"
+                    cancelLabel=""
+                    onConfirm={() => setTransferTargetId(null)}
+                    onCancel={() => setTransferTargetId(null)}
                 />
             )}
 

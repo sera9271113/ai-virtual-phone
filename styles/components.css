@@ -130,6 +130,125 @@
   flex: 1;
 }
 
+.preset-transfer-dialog.modal-dialog {
+  width: min(92%, 560px);
+  max-width: 560px;
+  max-height: 84vh;
+  animation: none;
+}
+
+.modal-overlay:has(.preset-transfer-dialog) {
+  animation: none;
+}
+
+.preset-transfer-dialog .modal-body {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+}
+
+.preset-transfer-content {
+  height: auto;
+}
+
+.preset-transfer-content .preset-transfer-list {
+  flex: none;
+}
+
+.preset-transfer-dialog .modal-header {
+  position: relative;
+  width: 100%;
+  padding-bottom: 2px;
+}
+
+.preset-transfer-dialog .modal-footer {
+  padding-top: 8px;
+  padding-bottom: 0;
+}
+
+.modal-header-with-back {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.modal-back-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--c-text-title);
+  cursor: pointer;
+}
+
+.modal-back-btn:active {
+  opacity: 0.55;
+}
+
+.modal-header-with-back .modal-title {
+  text-align: center;
+}
+
+.modal-header-with-back .modal-back-btn {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.preset-transfer-dialog .modal-title {
+  font-size: calc(15px*var(--app-text-scale,1));
+}
+
+.preset-transfer-search.ui-input {
+  min-height: 32px;
+  height: 32px;
+  padding: 6px 10px;
+  font-size: calc(12px*var(--app-text-scale,1));
+}
+
+.preset-transfer-list {
+  background: transparent;
+}
+
+.preset-transfer-row {
+  min-height: 42px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+.preset-transfer-row input[type="checkbox"] {
+  accent-color: #111;
+}
+
+.preset-transfer-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.preset-transfer-action.ui-btn {
+  min-height: 32px;
+  padding: 6px 10px;
+  gap: 5px;
+  font-size: calc(11px*var(--app-text-scale,1));
+  white-space: nowrap;
+}
+
+.preset-transfer-actions .preset-transfer-action {
+  flex: 1;
+}
+
+.preset-transfer-conflict {
+  border: 1px solid #6b7280;
+  border-radius: 8px;
+  background: transparent;
+}
+
 /* The import dialog is position:fixed inside the transformed phone shell; on iOS
    WebKit the spinner's repaints can leave a ghost of the button's previous frame
    ("two stacked buttons"). Promoting the dialog and its buttons to their own GPU
