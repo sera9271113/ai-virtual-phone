@@ -143,6 +143,7 @@ export const DATA_MODULES: DataModuleDefinition[] = [
           "ai_phone_mem_last_sum_",
           "ai_phone_mem_core_count_",
           "ai_phone_mem_last_core_sum_",
+          "ai_phone_builtin_app_timeline_v1:",
           "note_wall_events_",
           "ai_phone_interview_magazine_events_",
           "ai_phone_cocreate_events_",
@@ -234,6 +235,31 @@ export const DATA_MODULES: DataModuleDefinition[] = [
     ],
   },
   {
+    id: "custom_apps",
+    label: "自定义应用",
+    description: "应用市场应用、应用内数据、时间线、通知和后台任务",
+    variant: "action",
+    large: true,
+    sources: [
+      {
+        type: "kv",
+        label: "应用定义与运行数据",
+        keys: [
+          "ai_phone_custom_apps_v1",
+          "ai_phone_custom_app_notifications_v1",
+          "ai_phone_custom_app_badges_v1",
+          "ai_phone_custom_app_tasks_v1",
+          "ai_phone_custom_app_world_activations_v1",
+          "ai_phone_custom_app_suggestions_v1",
+        ],
+        prefixes: [
+          "ai_phone_custom_app_data_v1:",
+          "ai_phone_custom_app_timeline_v1:",
+        ],
+      },
+    ],
+  },
+  {
     id: "creative",
     label: "创作与玩法",
     description: "故事、漫卷、地图、住宅、黑市、查手机快照与世界构建素材",
@@ -245,8 +271,6 @@ export const DATA_MODULES: DataModuleDefinition[] = [
       { type: "indexeddb", dbName: "AiPhoneMapDB", label: "地图冒险" },
       { type: "indexeddb", dbName: "AiPhoneDwellingDB", label: "住宅" },
       { type: "indexeddb", dbName: "AiPhoneCheckPhoneDB", label: "查手机快照" },
-      { type: "indexeddb", dbName: "world-builder-scenes", label: "世界构建场景" },
-      { type: "indexeddb", dbName: "world-builder-models", label: "世界构建模型" },
       {
         type: "kv",
         label: "创作玩法配置",

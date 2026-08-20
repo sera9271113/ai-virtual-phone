@@ -635,6 +635,102 @@ export function payWithWalletAccount(input: WalletPaymentInput): WalletPaymentRe
   return { ok: true, state: next, transaction };
 }
 
+export function refundWalletPayment(input: {
+  transactionId: string;
+  relatedOrderId?: string;
+  title?: string;
+  detail?: string;
+}): WalletPaymentResult {
+  const current = loadWalletState();
+  const payment = current.transactions.find(transaction => (
+    transaction.id === input.transactionId
+    && transaction.kind === "payment"
+    && transaction.amount < 0
+  ));
+  if (!payment) return { ok: false, state: current, error: "未找到这笔订单的付款记录。" };
+
+  const relatedOrderId = cleanText(input.relatedOrderId, 120) || payment.relatedOrderId;
+  const existingRefund = current.transactions.find(transaction => (
+    transaction.kind === "refund"
+    && Boolean(relatedOrderId)
+    && transaction.relatedOrderId === relatedOrderId
+    && transaction.amount > 0
+  ));
+  if (existingRefund) return { ok: true, state: current, transaction: existingRefund };
+
+  const refundAmount = normalizeMoney(Math.abs(payment.amount));
+  if (refundAmount <= 0) return { ok: false, state: current, error: "退款金额无效。" };
+  const now = new Date().toISOString();
+  const title = cleanText(input.title, 120) || "购物订单退款";
+  const detail = cleanText(input.detail, 400) || "未发货订单取消，款项原路退回";
+
+  if (isBalanceAccountId(payment.cardId)) {
+    const balanceAfter = normalizeMoney(current.balance + refundAmount);
+    const transaction = createTransaction({
+      accountId: WALLET_BALANCE_ACCOUNT_ID,
+      accountType: "balance",
+      title,
+      amount: refundAmount,
+      kind: "refund",
+      category: "退款",
+      detail,
+      balanceAfter,
+      relatedOrderId,
+    });
+    const next = saveWalletState({
+      ...current,
+      balance: balanceAfter,
+      transactions: [transaction, ...current.transactions],
+    });
+    return { ok: true, state: next, transaction };
+  }
+
+  const familyCard = current.familyCards.find(card => card.id === payment.cardId);
+  if (familyCard) {
+    const usedAfter = normalizeMoney(Math.max(0, familyCard.usedAmount - refundAmount));
+    const transaction = createTransaction({
+      accountId: familyCard.id,
+      accountType: "card",
+      title,
+      amount: refundAmount,
+      kind: "refund",
+      category: "亲属卡退款",
+      detail,
+      balanceAfter: normalizeMoney(familyCard.monthlyLimit - usedAfter),
+      relatedOrderId,
+    });
+    const next = saveWalletState({
+      ...current,
+      familyCards: current.familyCards.map(card => card.id === familyCard.id
+        ? { ...card, usedAmount: usedAfter, updatedAt: now }
+        : card),
+      transactions: [transaction, ...current.transactions],
+    });
+    return { ok: true, state: next, transaction };
+  }
+
+  const card = current.cards.find(item => item.id === payment.cardId);
+  if (!card) return { ok: false, state: current, error: "原付款账户已不存在，暂时无法自动退款。" };
+  const balanceAfter = normalizeMoney(card.balance + refundAmount);
+  const transaction = createTransaction({
+    accountId: card.id,
+    accountType: "card",
+    title,
+    amount: refundAmount,
+    kind: "refund",
+    category: "退款",
+    detail,
+    balanceAfter,
+    relatedOrderId,
+  });
+  const next = saveWalletState({
+    ...current,
+    cards: current.cards.map(item => item.id === card.id ? { ...item, balance: balanceAfter, updatedAt: now } : item),
+    transactions: [transaction, ...current.transactions],
+  });
+  return { ok: true, state: next, transaction };
+}
+
 export function payWithWalletBalance(input: Omit<WalletPaymentInput, "accountId" | "cardId">): WalletPaymentResult {
   return payWithWalletAccount({ ...input, accountId: WALLET_BALANCE_ACCOUNT_ID });
 }

@@ -965,7 +965,8 @@
   top: 46px;
   transform: translateX(-50%);
   z-index: 8;
-  width: min(92%, 320px);
+  width: fit-content;
+  max-width: min(92%, 320px);
   border-radius: 14px;
   border: 0;
   background: rgba(255, 255, 255, 0.9);
@@ -974,6 +975,7 @@
   font-size: calc(11.7px*var(--app-text-scale,1));
   line-height: 1.35;
   text-align: center;
+  overflow-wrap: anywhere;
   box-shadow: 0 12px 24px rgba(60, 60, 60, 0.18);
   pointer-events: none;
 }

@@ -53,7 +53,7 @@ function formatPhotoDirectiveForPrompt(msg: ChatMessage): string {
 export type NativeTimelineEntry = {
     id: string;
     sourceApp: "chat" | "message" | "moments" | "story" | "vn" | "map" | "game" | "diary" | "xiaohongshu" | "interview_magazine" | "cocreate" | "checkphone" | "shopping" | "custom_app";
-    sourceDetail?: "direct" | "message" | "group" | "system" | "story" | "chat_offline" | "game" | "diary_entry" | "notewall" | "xiaohongshu" | "black_market_theater" | "interview_issue" | "interview_shared_issue" | "cocreate_project" | "checkphone" | "custom_app_event"; // chat sub-type: 1:1 vs Message vs group chat vs system note
+    sourceDetail?: "direct" | "message" | "group" | "system" | "story" | "chat_offline" | "game" | "diary_entry" | "notewall" | "xiaohongshu" | "black_market_theater" | "interview_issue" | "interview_shared_issue" | "cocreate_project" | "checkphone" | "shopping" | "custom_app_event"; // chat sub-type: 1:1 vs Message vs group chat vs system note
     authorType?: "user" | "character" | "npc"; // who authored this entry
     postAuthorType?: "user" | "character"; // for moments: who owns the parent post
     sessionId?: string;
@@ -1429,15 +1429,15 @@ export function prepareGroupShortTermContext(
                         entry.sourceApp === "map" ? "recent_game" :
                             entry.sourceApp === "game" ? "recent_game" :
                                 entry.sourceApp === "xiaohongshu" ? "recent_xiaohongshu" :
-                                    entry.sourceApp === "checkphone" ? "recent_checkphone" :
-                                        entry.sourceApp === "interview_magazine" ? "recent_interview" :
-                                                entry.sourceApp === "cocreate" ? "recent_cocreate" :
-                                                    entry.sourceApp === "custom_app" ? "recent_custom_app" :
-                                                        entry.sourceApp === "story" && entry.sourceDetail === "black_market_theater" ? "recent_theater" :
-                                                            entry.sourceApp === "diary" && entry.sourceDetail === "diary_entry" ? "recent_diary" :
-                                                                entry.sourceApp === "diary" && entry.sourceDetail === "notewall" ? "recent_notewall" :
-                                                                    entry.sourceApp === "message" ? "recent_sms" :
-                                                                        entry.sourceApp === "chat" ? "recent_chat" : "recent_events"
+                                            entry.sourceApp === "checkphone" ? "recent_checkphone" :
+                                                entry.sourceApp === "interview_magazine" ? "recent_interview" :
+                                                    entry.sourceApp === "cocreate" ? "recent_cocreate" :
+                                                        entry.sourceApp === "custom_app" ? "recent_custom_app" :
+                                                            entry.sourceApp === "story" && entry.sourceDetail === "black_market_theater" ? "recent_theater" :
+                                                                entry.sourceApp === "diary" && entry.sourceDetail === "diary_entry" ? "recent_diary" :
+                                                                    entry.sourceApp === "diary" && entry.sourceDetail === "notewall" ? "recent_notewall" :
+                                                                        entry.sourceApp === "message" ? "recent_sms" :
+                                                                            entry.sourceApp === "chat" ? "recent_chat" : "recent_events"
                 ),
                 text: entry.content,
             });

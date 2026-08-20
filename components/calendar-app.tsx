@@ -552,7 +552,11 @@ export function PhoneCalendarApp({
   const canFinishSelected = menstrualSummary.isPeriodActive && !!menstrualSummary.currentPeriodStartDate && selectedDate >= menstrualSummary.currentPeriodStartDate && !menstrualSummary.todayFinished;
 
   return (
-    <div className="calendar-app-shell" data-calendar-theme={config.theme}>
+    <div
+      className="calendar-app-shell"
+      data-calendar-theme={config.theme}
+      data-owner-type={selectedOwner?.ownerType}
+    >
       {appliedCalendarCss && <style dangerouslySetInnerHTML={{ __html: scopeSessionCSS(appliedCalendarCss, ".calendar-app-shell") }} />}
       <div className="calendar-app">
         <header className="calendar-header">

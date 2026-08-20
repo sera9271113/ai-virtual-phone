@@ -255,7 +255,9 @@
 
   .toast{
     position:absolute; left:50%; bottom:120px; transform:translateX(-50%) translateY(10px);
-    background:rgba(0,0,0,.82); color:#fff; font-size:13px; padding:9px 16px; border-radius:999px;
+    background:rgba(255,255,255,.9); color:rgba(30,30,30,.92); font-size:13px; padding:10px 12px; border-radius:14px;
+    width:fit-content; max-width:calc(100% - 48px); box-shadow:0 12px 24px rgba(60,60,60,.18);
+    white-space:normal; overflow-wrap:anywhere; text-align:center;
     z-index:60; opacity:0; transition:opacity .2s, transform .2s; pointer-events:none; white-space:nowrap;
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }

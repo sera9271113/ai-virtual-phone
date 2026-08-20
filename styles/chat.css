@@ -2108,6 +2108,14 @@
   pointer-events: none;
 }
 
+.chat-plugin-toast-host .wp-toast {
+  width: fit-content;
+  max-width: min(92%, 320px);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
 /* ── Bubble role defaults ── */
 .chat-bubble-role-user,
 .chat-bubble-role-assistant {
@@ -7046,12 +7054,16 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 12;
-  padding: 8px 16px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.78);
-  color: rgba(255, 255, 255, 0.92);
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(30, 30, 30, 0.92);
   font-size: calc(12.5px*var(--app-text-scale,1));
-  letter-spacing: 0.3px;
+  box-shadow: 0 12px 24px rgba(60, 60, 60, 0.18);
+  max-width: min(92%, 320px);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
   pointer-events: none;
   animation: videocall-toast-in 200ms ease-out;
 }

@@ -10,6 +10,7 @@ out/
 data/activation-codes.json
 SillyTavern/
 .codex
+.codex-backups/
 *:Zone.Identifier
 *.crdownload
 *.tsbuildinfo

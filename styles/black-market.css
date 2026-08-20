@@ -707,12 +707,15 @@
   transform: translateX(-50%);
   pointer-events: none;
   max-width: calc(100% - 48px);
+  width: fit-content;
   padding: 10px 14px;
+  border-radius: 14px;
   background: #f8fff9;
   color: #050608;
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26);
   font-size: calc(12px*var(--app-text-scale,1));
   font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .cp-black-market-toast--error {

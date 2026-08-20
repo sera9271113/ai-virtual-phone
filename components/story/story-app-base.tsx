@@ -1109,7 +1109,7 @@ export function StoryAppBase({ characterId, onClose, onBack }: StoryAppProps) {
                   <ChevronLeft size={18} />
                 </button>
               </div>
-              <div className="story-header-center">STORY</div>
+              <div className="story-header-center">Story</div>
               <div className="story-header-right" />
             </div>
           </div>
@@ -1299,7 +1299,7 @@ export function StoryAppBase({ characterId, onClose, onBack }: StoryAppProps) {
                 <ChevronLeft size={18} />
               </button>
             </div>
-            <div className="story-header-center">STORY</div>
+            <div className="story-header-center">Story</div>
             <div className="story-header-right">
               <button
                 className="story-bare-btn"

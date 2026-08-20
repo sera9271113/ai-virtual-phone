@@ -3648,10 +3648,12 @@
   max-width: min(320px, calc(100% - 48px));
   min-height: 44px;
   padding: 10px 14px;
-  border-radius: 24px;
-  background: rgba(26, 26, 26, 0.94);
-  color: #fff;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(30, 30, 30, 0.92);
+  box-shadow: 0 12px 24px rgba(60, 60, 60, 0.18);
+  width: fit-content;
+  overflow-wrap: anywhere;
   pointer-events: none;
   animation: cp-shopping-cart-toast 1.7s ease both;
 }

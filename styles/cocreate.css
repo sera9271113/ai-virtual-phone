@@ -53,9 +53,9 @@
   z-index: 7;
   min-height: 42px;
   padding: 11px 14px;
-  border: 0.5px solid rgba(105, 105, 105, 0.2);
+  border: 0;
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.38);
+  box-shadow: 0 12px 24px rgba(60, 60, 60, 0.18);
   color: rgba(26, 26, 26, 0.76);
   font-size: calc(12.5px*var(--app-text-scale,1));
   line-height: 1.55;
@@ -726,7 +726,7 @@
 .cocreate-write-chapter-strip i {
   width: 6px;
   height: 6px;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(105, 105, 105, 0.78);
   box-shadow: 0 0 8px rgba(105, 105, 105, 0.4);
 }

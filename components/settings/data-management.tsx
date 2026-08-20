@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Archive,
   Brain,
+  Boxes,
   Download,
   Loader2,
   MessageCircle,
@@ -94,6 +95,7 @@ const MODULE_ICONS: Record<DataModuleId, LucideIcon> = {
   memory: Brain,
   social: UsersRound,
   apps: Smartphone,
+  custom_apps: Boxes,
   creative: Sparkles,
   cache: Archive,
 };
@@ -106,6 +108,7 @@ const MODULE_ACCENTS: Record<DataModuleId, string> = {
   memory: BINDING_ACCENTS.memory,
   social: CONTENT_APP_ACCENTS.moments,
   apps: CONTENT_APP_ACCENTS.calendar,
+  custom_apps: CONTENT_APP_ACCENTS.cocreate,
   creative: CONTENT_APP_ACCENTS.story,
   cache: BINDING_ACCENTS.regex,
 };

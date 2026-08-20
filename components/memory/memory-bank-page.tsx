@@ -150,7 +150,8 @@ const MEMORY_DOMAIN_STYLES = `
 }
 
 .mb-search {
-    background: #FBFBFB;
+    background: var(--c-input);
+    border: 1px solid var(--c-input-border);
     border-radius: 12px;
     padding: 12px 16px;
     display: flex;
@@ -164,9 +165,9 @@ const MEMORY_DOMAIN_STYLES = `
     width: 100%;
     margin-left: 10px;
     font-size: 14px;
-    color: #334155;
+    color: var(--c-text-title);
 }
-.mb-search input::placeholder { color: #B0B0B0; font-weight: 500; }
+.mb-search input::placeholder { color: var(--c-icon); font-weight: 500; }
 
 .mb-chips-wrapper {
     display: flex;
@@ -264,13 +265,18 @@ const MEMORY_DOMAIN_STYLES = `
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(30, 41, 59, 0.92);
-    color: #ffffff;
+    background: rgba(255, 255, 255, 0.9);
+    color: rgba(30, 30, 30, 0.92);
     font-size: 11px;
     font-weight: 600;
     padding: 9px 16px;
-    border-radius: 999px;
-    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.25);
+    border-radius: 14px;
+    box-shadow: 0 12px 24px rgba(60, 60, 60, 0.18);
+    width: fit-content;
+    max-width: min(92%, 320px);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
     pointer-events: none;
     white-space: nowrap;
 }

@@ -52,6 +52,7 @@ import {
   getWalletBalance,
   loadWalletState,
   payWithWalletAccount,
+  refundWalletPayment,
   WALLET_BALANCE_ACCOUNT_ID,
   WALLET_UPDATED_EVENT,
 } from "@/lib/wallet-storage";
@@ -435,6 +436,8 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
   const [cartFeedback, setCartFeedback] = useState<ShoppingCartFeedback | null>(null);
   const [confirmRefreshOpen, setConfirmRefreshOpen] = useState(false);
   const [confirmCheckoutOpen, setConfirmCheckoutOpen] = useState(false);
+  const [cancelOrderConfirmOpen, setCancelOrderConfirmOpen] = useState(false);
+  const [cancelOrderError, setCancelOrderError] = useState<string | null>(null);
   const [paymentRequestOpen, setPaymentRequestOpen] = useState(false);
   const [paymentRequestTargets, setPaymentRequestTargets] = useState<Character[]>([]);
   const [selectedPaymentRequestTargetId, setSelectedPaymentRequestTargetId] = useState("");
@@ -604,6 +607,11 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
         : "可搜索商品，或点刷新生成分类推荐"
       : "可切回全部，或点刷新生成分类推荐";
   const activeOrderShipping = activeOrder ? resolveOrderShipping(activeOrder, nowTick) : null;
+  const activeOrderCanCancel = Boolean(activeOrder && (
+    activeOrder.paymentStatus === "payment_requested"
+    || activeOrderShipping?.currentStage === "ordered"
+    || (!activeOrderShipping?.timeline.length && activeOrder.statusLabel === "待发货")
+  ));
   const normalizedCartSearchQuery = normalizeShoppingSearchValue(sectionSearchInputs.cart);
   const normalizedOrderSearchQuery = normalizeShoppingSearchValue(sectionSearchInputs.orders);
   const normalizedSavedSearchQuery = normalizeShoppingSearchValue(sectionSearchInputs.account);
@@ -991,6 +999,43 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
     setConfirmCheckoutOpen(false);
   }
 
+  function cancelActiveOrder() {
+    if (!activeOrder || !activeOrderCanCancel) {
+      setCancelOrderConfirmOpen(false);
+      return;
+    }
+
+    if (activeOrder.paymentTransactionId) {
+      const refundResult = refundWalletPayment({
+        transactionId: activeOrder.paymentTransactionId,
+        relatedOrderId: activeOrder.id,
+        title: "购物订单退款",
+        detail: `取消订单：${activeOrder.summary}`,
+      });
+      if (!refundResult.ok) {
+        setWalletState(refundResult.state);
+        setCancelOrderError(refundResult.error ?? "退款失败，请稍后重试。");
+        setCancelOrderConfirmOpen(false);
+        return;
+      }
+      setWalletState(refundResult.state);
+    }
+
+    persist(current => ({
+      ...current,
+      orders: current.orders.map(order => order.id === activeOrder.id
+        ? {
+            ...order,
+            statusLabel: "已取消",
+            paymentStatus: "payment_canceled",
+            shippingTimeline: [],
+          }
+        : order),
+    }));
+    setCancelOrderError(null);
+    setCancelOrderConfirmOpen(false);
+  }
+
   function openProduct(product: ShoppingProduct | ShoppingCartItem | ShoppingOrder["items"][number], defaults?: { tagLabel?: string; detailLabel?: string }) {
     setTranslationPreview(null);
     setSelectedProduct(toProductDetail(product, defaults));
@@ -1040,6 +1085,8 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
     : activeOrder
       ? () => {
         setTranslationPreview(null);
+        setCancelOrderConfirmOpen(false);
+        setCancelOrderError(null);
         setSelectedOrderId(null);
       }
       : () => onClose(loading);
@@ -1309,7 +1356,7 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
               key={selectedTab}
               ref={shoppingScrollRef}
               className="cp-shopping-scroll"
-              style={{ padding: "0 24px 120px", display: "flex", flexDirection: "column", gap: "32px", marginTop: selectedTab === "home" ? 0 : "8px" }}
+              style={{ padding: "0 24px 102px", display: "flex", flexDirection: "column", gap: "32px", marginTop: selectedTab === "home" ? 0 : "8px" }}
             >
               {selectedTab === "home" && hasVisibleHomeContent ? (
                 <>
@@ -1469,7 +1516,7 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
                           <strong style={{ fontSize: "calc(13px*var(--app-text-scale,1))", color: "#222" }}>{order.merchantLabel}</strong>
-                          <span style={{ fontSize: "calc(12px*var(--app-text-scale,1))", color: shipping.statusLabel === "已到货" ? "#16a34a" : "#ff6b00", fontWeight: 500 }}>{shipping.statusLabel}</span>
+                          <span style={{ fontSize: "calc(12px*var(--app-text-scale,1))", color: shipping.statusLabel === "已到货" ? "#16a34a" : shipping.statusLabel === "已取消" || shipping.statusLabel === "已拒绝代付" ? "#999" : "#ff6b00", fontWeight: 500 }}>{shipping.statusLabel}</span>
                         </div>
                         <div style={{ display: "flex", gap: "10px", width: "100%", alignItems: "stretch" }}>
                           <div style={{ width: "56px", height: "56px", background: "#f5f5f5", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "calc(24px*var(--app-text-scale,1))", flexShrink: 0 }}>
@@ -1514,7 +1561,7 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
               )}
             </div>
 
-            <nav style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "#fff", display: "flex", justifyContent: "space-around", padding: "12px 0 calc(12px + env(safe-area-inset-bottom, 0px))", borderTop: "1px solid #eaeaea", zIndex: 10 }}>
+            <nav style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "#fff", display: "flex", justifyContent: "space-around", padding: "7px 0 calc(7px + env(safe-area-inset-bottom, 0px))", borderTop: "1px solid #eaeaea", zIndex: 10 }}>
               {SHOPPING_TABS.map(tab => {
                 const Icon = tab.icon;
                 const active = selectedTab === tab.id;
@@ -1526,9 +1573,9 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
                     onClick={() => {
                       selectShoppingTab(tab.id);
                     }}
-                    style={{ background: "transparent", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", color: active ? "#ff6b00" : "#999" }}
+                    style={{ background: "transparent", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", color: active ? "#ff6b00" : "#999" }}
                   >
-                    <div style={{ background: active ? "#ff6b00" : "transparent", color: active ? "#fff" : "inherit", padding: "8px", borderRadius: "12px" }}>
+                    <div style={{ background: active ? "#ff6b00" : "transparent", color: active ? "#fff" : "inherit", padding: "6px", borderRadius: "11px" }}>
                       <Icon size={active ? 20 : 22} strokeWidth={active ? 2.5 : 2} />
                     </div>
                     <span style={{ fontSize: "calc(11px*var(--app-text-scale,1))", fontWeight: active ? 600 : 500 }}>{tab.label}</span>
@@ -1546,7 +1593,7 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
                 style={{
                   position: "absolute",
                   right: "24px",
-                  bottom: "calc(86px + env(safe-area-inset-bottom, 0px))",
+                  bottom: "calc(70px + env(safe-area-inset-bottom, 0px))",
                   zIndex: 12,
                   width: "54px",
                   height: "54px",
@@ -1648,7 +1695,7 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
               <div style={{ background: "#fff", borderRadius: "20px", padding: "20px", boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>
                   <span style={{ fontSize: "calc(12px*var(--app-text-scale,1))", color: "#999" }}>Order Status</span>
-                  <span style={{ fontSize: "calc(12px*var(--app-text-scale,1))", color: activeOrderShipping?.statusLabel === "已到货" ? "#16a34a" : "#ff6b00", fontWeight: 600 }}>{activeOrderShipping?.statusLabel ?? activeOrder.statusLabel}</span>
+                  <span style={{ fontSize: "calc(12px*var(--app-text-scale,1))", color: activeOrderShipping?.statusLabel === "已到货" ? "#16a34a" : activeOrderShipping?.statusLabel === "已取消" || activeOrderShipping?.statusLabel === "已拒绝代付" ? "#999" : "#ff6b00", fontWeight: 600 }}>{activeOrderShipping?.statusLabel ?? activeOrder.statusLabel}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                   <span style={{ fontSize: "calc(12px*var(--app-text-scale,1))", color: "#999" }}>Merchant</span>
@@ -1665,7 +1712,9 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
                       ? `等待${activeOrder.payerCharacterName || "TA"}代付`
                       : activeOrder.paymentStatus === "payment_declined"
                         ? `${activeOrder.payerCharacterName || "TA"}已拒绝代付`
-                        : activeOrder.paymentCardLabel ?? "未记录付款方式"}
+                        : activeOrder.paymentStatus === "payment_canceled"
+                          ? "订单已取消"
+                          : activeOrder.paymentCardLabel ?? "未记录付款方式"}
                   </span>
                 </div>
               </div>
@@ -1731,10 +1780,29 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
                   <span style={{ color: "#222", fontWeight: 500 }}>{activeOrder.items.length}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "calc(16px*var(--app-text-scale,1))", color: "#222", fontWeight: "bold", borderTop: "1px dashed #eee", paddingTop: "16px" }}>
-                  <span>Amount Paid</span>
-                  <span style={{ color: "#ff6b00" }}>{activeOrder.totalLabel}</span>
+                  <span>{activeOrder.paymentStatus === "payment_canceled" ? activeOrder.paymentTransactionId ? "Refunded" : "Order Amount" : "Amount Paid"}</span>
+                  <span style={{ color: activeOrder.paymentStatus === "payment_canceled" && activeOrder.paymentTransactionId ? "#16a34a" : activeOrder.paymentStatus === "payment_canceled" ? "#777" : "#ff6b00" }}>{activeOrder.totalLabel}</span>
                 </div>
               </div>
+
+              {activeOrderCanCancel ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCancelOrderError(null);
+                    setCancelOrderConfirmOpen(true);
+                  }}
+                  style={{ width: "100%", minHeight: "46px", borderRadius: "16px", border: "1px solid rgba(229,72,77,0.28)", background: "#fff", color: "#d33f49", fontSize: "calc(13px*var(--app-text-scale,1))", fontWeight: 700, flexShrink: 0 }}
+                >
+                  取消订单
+                </button>
+              ) : null}
+              {cancelOrderError ? (
+                <div role="alert" style={{ borderRadius: "14px", background: "#fef2f2", color: "#b91c1c", padding: "10px 12px", display: "flex", gap: "8px", alignItems: "flex-start", fontSize: "calc(12px*var(--app-text-scale,1))", lineHeight: 1.4 }}>
+                  <AlertCircle size={15} style={{ flexShrink: 0, marginTop: "1px" }} />
+                  <span>{cancelOrderError}</span>
+                </div>
+              ) : null}
             </div>
           </div>
         )}
@@ -2098,6 +2166,22 @@ export function ShoppingApp({ onClose, visible = true, onIdle, onBusyChange }: S
           cancelLabel="取消"
           onConfirm={confirmRemoveCartItem}
           onCancel={() => setConfirmCartDeleteItemId(null)}
+        />
+      )}
+
+      {cancelOrderConfirmOpen && activeOrder && (
+        <ConfirmDialog
+          title="确认取消订单？"
+          message={activeOrder.paymentTransactionId
+            ? "订单尚未发货，取消后款项将原路退回。"
+            : activeOrder.paymentStatus === "payment_requested"
+              ? "取消后将终止本次代付请求，订单不会继续配送。"
+              : "订单尚未发货，取消后不会继续配送。"}
+          variant="danger"
+          confirmLabel="确认取消"
+          cancelLabel="暂不取消"
+          onConfirm={cancelActiveOrder}
+          onCancel={() => setCancelOrderConfirmOpen(false)}
         />
       )}
 

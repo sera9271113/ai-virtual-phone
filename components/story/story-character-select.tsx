@@ -1100,7 +1100,7 @@ export function StoryCharacterSelect({ onSelect, onClose }: StoryCharacterSelect
               <ChevronLeft size={18} />
             </button>
           </div>
-          <div style={styles.headerCenter} className="ccs-header-title">STORY</div>
+          <div style={styles.headerCenter} className="ccs-header-title">Story</div>
           <div style={styles.headerRight} className="ccs-header-right">
             <button style={styles.bareBtn} className="ccs-css-btn" onClick={openCssModal} aria-label="自定义 CSS">
               <PaintbrushVertical size={16} />

@@ -28,10 +28,26 @@
   min-height: 100%;
   height: 100%;
   color: var(--c-text, #2b2b31);
-  background: var(--diary-bg, #F7F7F7);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.diary-app {
+  background: var(--c-page-body-bg);
+}
+
+.diary-app::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: calc(var(--page-header-safe-top, 48px) + var(--page-header-content-height, 42px));
+  background: var(--c-header-bg);
+  pointer-events: none;
+}
+
+.note-wall-app {
+  background: var(--diary-bg, #F7F7F7);
 }
 
 .note-wall-app {
@@ -51,6 +67,11 @@
   margin-top: var(--page-header-safe-top, 48px);
   padding: 1px 16px;
   flex: 0 0 auto;
+}
+
+.diary-app-header {
+  z-index: 1;
+  background: transparent;
 }
 
 .diary-app-header h1,
@@ -82,6 +103,11 @@
   margin-top: 2px;
   font-size: calc(8.1px*var(--app-text-scale,1));
   line-height: 1.25;
+  color: var(--c-text);
+}
+
+.diary-app > .diary-app-header > .diary-icon-btn {
+  color: var(--c-icon);
 }
 
 .diary-app > .diary-app-header > div {
@@ -885,12 +911,24 @@
 .diary-self-write-form textarea {
   width: 100%;
   padding: 12px;
-  border: 1px solid var(--diary-border, rgba(0,0,0,0.06));
+  border: 1px solid var(--c-input-border);
   border-radius: 8px;
-  background: var(--diary-card-bg, #FFFFFF);
-  color: var(--diary-text-primary, #4F4F4F);
+  background: var(--c-input);
+  color: var(--c-text-title);
   font-family: inherit;
   font-size: calc(13.6px*var(--app-text-scale,1));
+}
+
+.diary-self-write-form select:focus,
+.diary-self-write-form input:focus,
+.diary-self-write-form textarea:focus {
+  border-color: var(--c-icon-active);
+  outline: none;
+}
+
+.diary-self-write-form input::placeholder,
+.diary-self-write-form textarea::placeholder {
+  color: var(--c-icon);
 }
 
 .diary-self-write-form textarea {
@@ -900,7 +938,7 @@
 .diary-settings-view {
   position: absolute;
   inset: 0;
-  background: var(--diary-bg, #F7F7F7);
+  background: var(--c-page-body-bg);
   z-index: 100;
   display: flex;
   flex-direction: column;
@@ -1032,11 +1070,16 @@
 
 .diary-home-flat-hours input {
   width: 40px;
-  border: none;
-  background: transparent;
+  border: 1px solid var(--c-input-border);
+  background: var(--c-input);
   text-align: center;
   font-size: calc(13px*var(--app-text-scale,1));
-  color: var(--diary-text-primary, #4F4F4F);
+  color: var(--c-text-title);
+}
+
+.diary-home-flat-hours input:focus {
+  border-color: var(--c-icon-active);
+  outline: none;
 }
 
 /* Character avatars stay on their own row below the toggle/interval row,
@@ -1135,8 +1178,8 @@
 .diary-self-write-modal .diary-self-write-form textarea {
   flex: 1;
   resize: none;
-  background: transparent;
-  border-color: transparent;
+  background: var(--c-input);
+  border-color: var(--c-input-border);
   line-height: 28px;
 }
 
@@ -1164,8 +1207,8 @@
 
 .diary-home-detail-modal .diary-self-write-form textarea {
   resize: vertical;
-  background: transparent;
-  border-color: transparent;
+  background: var(--c-input);
+  border-color: var(--c-input-border);
   line-height: 28px;
 }
 
@@ -1289,12 +1332,18 @@
 .diary-entry-interval-inline input {
   width: 52px;
   padding: 6px 8px;
-  border: 1px solid var(--diary-border, rgba(0,0,0,0.06));
+  border: 1px solid var(--c-input-border);
   border-radius: 8px;
-  background: var(--diary-card-bg, #FFFFFF);
-  color: var(--diary-text-primary, #4F4F4F);
+  background: var(--c-input);
+  color: var(--c-text-title);
   font-size: calc(13.6px*var(--app-text-scale,1));
   text-align: right;
+}
+
+
+.diary-entry-interval-inline input:focus {
+  border-color: var(--c-icon-active);
+  outline: none;
 }
 
 .diary-entry-character-section {
@@ -1536,20 +1585,22 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(26, 26, 26, 0.85);
-  color: #FFFFFF;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(30, 30, 30, 0.92);
   font-size: calc(12px*var(--app-text-scale,1));
-  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+  box-shadow: 0 12px 24px rgba(60, 60, 60, 0.18);
+  max-width: min(92%, 320px);
+  overflow-wrap: anywhere;
 }
 
 .diary-generating-toast-spinner {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.35);
-  border-top-color: #FFFFFF;
+  border: 2px solid rgba(30,30,30,0.16);
+  border-top-color: rgba(30,30,30,0.82);
   animation: diary-spin 0.7s linear infinite;
 }
 
@@ -1735,7 +1786,7 @@
   border-radius: 0;
   overflow: hidden;
   flex-shrink: 0;
-  background: var(--diary-bg, #F7F7F7);
+  background: var(--c-page-body-bg);
 }
 
 .diary-home-profile-banner {
@@ -1744,7 +1795,7 @@
   background-image: var(--diary-home-bg-image, none);
   background-size: cover;
   background-position: center;
-  background-color: rgba(26, 26, 28, 0.06);
+  background-color: color-mix(in srgb, var(--c-text) 6%, transparent);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1756,7 +1807,7 @@
 .diary-home-profile-banner-fade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 62%, var(--diary-bg, #F7F7F7) 100%);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 62%, var(--c-page-body-bg) 100%);
 }
 
 .diary-home-profile-banner-actions {
@@ -1812,7 +1863,7 @@
   justify-content: center;
   background: var(--diary-pill-bg, #F2F2F2);
   color: var(--diary-text-secondary, #8A8A8A);
-  border: 3px solid var(--diary-bg, #F7F7F7);
+  border: 3px solid var(--c-page-body-bg);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
 }
 
@@ -1838,7 +1889,7 @@
   justify-content: center;
   background: var(--diary-accent, #1A1A1A);
   color: #FFFFFF;
-  border: 2px solid var(--diary-bg, #F7F7F7);
+  border: 2px solid var(--c-page-body-bg);
   pointer-events: none;
 }
 
@@ -1911,11 +1962,16 @@
   margin-top: 4px;
   width: 100%;
   padding: 4px 8px;
-  border: 1px solid var(--diary-border, rgba(0,0,0,0.06));
+  border: 1px solid var(--c-input-border);
   border-radius: 8px;
-  background: var(--diary-pill-bg, #F2F2F2);
-  color: var(--diary-text-primary, #4F4F4F);
+  background: var(--c-input);
+  color: var(--c-text-title);
   font-size: calc(12px*var(--app-text-scale,1));
+}
+
+.diary-home-signature-input:focus {
+  border-color: var(--c-icon-active);
+  outline: none;
 }
 
 /* Mood calendar */

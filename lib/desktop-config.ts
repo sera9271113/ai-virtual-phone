@@ -26,7 +26,7 @@ export type IconId =
   | "resources"
   | "resource_hub"
   | "characters"
-  | "worldbuilder";
+  ;
 
 export type DesktopIconId = IconId | CustomAppIconId;
 
@@ -51,7 +51,6 @@ export const PAGE_2_DEFAULT: IconId[] = [
   "story",
   "vnmode",
   "mapmode",
-  "worldbuilder",
   "resource_hub"
 ];
 
@@ -99,12 +98,5 @@ export const ICONS: Record<IconId, IconMeta> = {
     tone: "var(--c-icon-lilac)",
     placeholder: false,
     path: "/characters"
-  },
-  worldbuilder: {
-    id: "worldbuilder",
-    label: "筑境",
-    tone: "var(--c-icon-amber)",
-    placeholder: false,
-    path: "/world-builder"
   },
 };

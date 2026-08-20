@@ -1523,6 +1523,19 @@
   color: #676062;
 }
 
+/* 角色周程：有安排的日期使用完整圆形底色；不影响用户自己的周期日历。 */
+.calendar-app-shell[data-owner-type="character"] .calendar-unified-cell[data-has-items="true"] .calendar-unified-date,
+.calendar-app-shell[data-calendar-theme="warm-gray"][data-owner-type="character"] .calendar-unified-cell[data-has-items="true"] .calendar-unified-date {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  border-radius: 50%;
+  background: var(--c-calendar-accent);
+  color: var(--c-calendar-text);
+  box-shadow: 0 3px 10px var(--c-calendar-accent-dim);
+}
+
 .calendar-app-shell[data-calendar-theme="warm-gray"] .calendar-day-list-item[data-current="true"] {
   background: linear-gradient(100deg, rgba(255, 249, 251, 0.92), rgba(255, 253, 254, 0.99));
   border: 1px solid #F6E8ED;

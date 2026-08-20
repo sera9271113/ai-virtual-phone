@@ -2301,13 +2301,18 @@ export function ResourceHubApp({ onClose, onNotice }: { onClose: () => void; onN
                     bottom: 60px;
                     transform: translateX(-50%);
                     z-index: 70;
-                    background: #ffffe1;
-                    color: #000;
+                    background: rgba(255, 255, 255, 0.9);
+                    color: rgba(30, 30, 30, 0.92);
                     font-size: calc(12px * var(--app-text-scale, 1));
                     padding: 6px 16px;
-                    border: 1px solid #000;
-                    box-shadow: 2px 2px 0 #000;
-                    white-space: nowrap;
+                    border: 0;
+                    border-radius: 14px;
+                    box-shadow: 0 12px 24px rgba(60, 60, 60, 0.18);
+                    width: fit-content;
+                    max-width: min(92%, 320px);
+                    white-space: normal;
+                    overflow-wrap: anywhere;
+                    text-align: center;
                     pointer-events: none;
                 }
                 .rh-search-row {

@@ -168,6 +168,7 @@ export function settleShoppingPaymentRequest(input: {
     const matches = (input.orderId && order.id === input.orderId)
       || (input.requestId && order.paymentRequestId === input.requestId);
     if (!matches) return order;
+    if (order.paymentStatus === "payment_canceled" || order.statusLabel === "已取消") return order;
 
     if (input.accepted) {
       const paidOrder: ShoppingOrder = {
