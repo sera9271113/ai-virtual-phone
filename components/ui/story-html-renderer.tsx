@@ -160,6 +160,8 @@ interface HtmlPageProps {
 
 function HtmlPageSegment({ html, onOptionSelect, htmlPageMode }: HtmlPageProps) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const scrollDeltaRef = useRef(0);
+    const scrollFrameRef = useRef<number | null>(null);
     const [height, setHeight] = useState(0);
     const contained = htmlPageMode === "contained";
 
@@ -189,7 +191,9 @@ function HtmlPageSegment({ html, onOptionSelect, htmlPageMode }: HtmlPageProps) 
             .replace(
                 'document.addEventListener("touchmove",function(e){if(${contained ? "true" : "false"}){var t=e.touches&&e.touches[0];if(t){var last=window.__rhr_lastY||t.clientY;var dy=last-t.clientY;scrollByDelta(dy);relayScroll(dy);window.__rhr_lastY=t.clientY}e.preventDefault();e.stopPropagation()}},{passive:false});document.addEventListener("touchstart",function(e){var t=e.touches&&e.touches[0];window.__rhr_lastY=t?t.clientY:0},{passive:true});',
                 'document.addEventListener("touchstart",function(e){if(${contained ? "true" : "false"}){var t=e.touches&&e.touches[0];window.__rhr_lastY=t?t.clientY:null}},{passive:true});document.addEventListener("touchmove",function(e){if(${contained ? "true" : "false"}){var t=e.touches&&e.touches[0];if(t){var last=window.__rhr_lastY==null?t.clientY:window.__rhr_lastY;var dy=last-t.clientY;scrollByDelta(dy);relayScroll(dy);window.__rhr_lastY=t.clientY}e.preventDefault();e.stopPropagation()}},{passive:false});document.addEventListener("touchend",resetTouch,{passive:true});document.addEventListener("touchcancel",resetTouch,{passive:true});'
-            );
+            )
+            .replace("scrollByDelta(e.deltaY);relayScroll(e.deltaY)", "relayScroll(e.deltaY)")
+            .replace("scrollByDelta(dy);relayScroll(dy)", "relayScroll(dy)");
 
         // Patch template JS: .textContent → .innerHTML so <strong>/<em> tags are preserved
         h = h.replace(/\.textContent\.trim\(\)/g, ".innerHTML.trim()");
@@ -210,11 +214,24 @@ function HtmlPageSegment({ html, onOptionSelect, htmlPageMode }: HtmlPageProps) 
             }
             if (e.data.type === "_rhr_scroll" && typeof e.data.dy === "number") {
                 const scrollParent = iframeRef.current?.closest(".dwelling-detail-html");
-                if (scrollParent) scrollParent.scrollTop += e.data.dy;
+                if (!scrollParent) return;
+                scrollDeltaRef.current += e.data.dy;
+                if (scrollFrameRef.current === null) {
+                    scrollFrameRef.current = requestAnimationFrame(() => {
+                        scrollParent.scrollTop += scrollDeltaRef.current;
+                        scrollDeltaRef.current = 0;
+                        scrollFrameRef.current = null;
+                    });
+                }
             }
         };
         window.addEventListener("message", handler);
-        return () => window.removeEventListener("message", handler);
+        return () => {
+            window.removeEventListener("message", handler);
+            if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current);
+            scrollFrameRef.current = null;
+            scrollDeltaRef.current = 0;
+        };
     }, [onOptionSelect, contained]);
 
     return (
